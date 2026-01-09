@@ -1,3 +1,25 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS junk
+.DS_Store
+
+# Raw datasets (copyrighted + huge)
 Garbage classification/
 dataset/
-runs/classify/train/weights/last.pt
+
+# YOLO training runs (except final weights)
+runs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
