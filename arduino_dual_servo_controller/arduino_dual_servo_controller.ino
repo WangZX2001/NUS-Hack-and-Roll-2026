@@ -67,8 +67,9 @@ void setup() {
   
   Serial.println("Arduino Dual Servo Controller Ready!");
   Serial.println("Servo 1 (Pin 9): Positioning arm");
-  Serial.println("Servo 2 (Pin 10): Drop flap");
+  Serial.println("Servo 2 (Pin 10): Drop flap (0° to 180°)");
   Serial.println("Commands: P(Paper), M(Metal), L(Plastic), G(Glass), T(Trash)");
+  Serial.println("Special: R(Reset), F(Test Full Flap Motion)");
   Serial.println("Sequence: Position → Drop → Return");
 }
 
@@ -104,6 +105,10 @@ void loop() {
         
       case 'R':  // Reset to center (manual command)
         resetToCenter();
+        break;
+        
+      case 'F':  // Test FULL flap motion (0° to 180° and back)
+        testFullFlapMotion();
         break;
         
       default:
@@ -190,4 +195,61 @@ void resetToCenter() {
   digitalWrite(LED_PIN, LOW);
   
   Serial.println("Reset complete - Ready for sorting");
+}
+
+void testFullFlapMotion() {
+  Serial.println("========================================");
+  Serial.println("TESTING FULL FLAP MOTION: 0° to 180°");
+  Serial.println("========================================");
+  
+  digitalWrite(LED_PIN, HIGH);
+  
+  // Start at 0°
+  Serial.println("Starting position: 0° (CLOSED)");
+  dropFlapServo.write(0);
+  delay(1000);
+  
+  // Sweep to 180° with position feedback
+  Serial.println("Sweeping from 0° to 180°...");
+  for (int angle = 0; angle <= 180; angle += 5) {
+    dropFlapServo.write(angle);
+    if (angle % 30 == 0) {  // Print every 30 degrees
+      Serial.print("  Current angle: ");
+      Serial.print(angle);
+      Serial.println("°");
+    }
+    delay(30);
+  }
+  
+  // Ensure we're at exactly 180°
+  dropFlapServo.write(180);
+  Serial.println("Reached: 180° (FULLY OPEN)");
+  Serial.println("Holding at 180° for 2 seconds...");
+  delay(2000);
+  
+  // Sweep back to 0°
+  Serial.println("Sweeping from 180° back to 0°...");
+  for (int angle = 180; angle >= 0; angle -= 5) {
+    dropFlapServo.write(angle);
+    if (angle % 30 == 0) {  // Print every 30 degrees
+      Serial.print("  Current angle: ");
+      Serial.print(angle);
+      Serial.println("°");
+    }
+    delay(30);
+  }
+  
+  // Ensure we're at exactly 0°
+  dropFlapServo.write(0);
+  Serial.println("Returned to: 0° (CLOSED)");
+  
+  digitalWrite(LED_PIN, LOW);
+  
+  Serial.println("========================================");
+  Serial.println("FULL FLAP MOTION TEST COMPLETE!");
+  Serial.println("If servo only moved 90°, check:");
+  Serial.println("1. Servo is not mechanically limited");
+  Serial.println("2. Servo is a 180° servo (not 90°)");
+  Serial.println("3. Power supply is adequate");
+  Serial.println("========================================");
 }
