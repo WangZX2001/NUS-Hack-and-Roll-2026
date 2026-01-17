@@ -69,7 +69,7 @@ void setup() {
   Serial.println("Servo 1 (Pin 9): Positioning arm");
   Serial.println("Servo 2 (Pin 10): Drop flap (0° to 180°)");
   Serial.println("Commands: P(Paper), M(Metal), L(Plastic), G(Glass), T(Trash)");
-  Serial.println("Special: R(Reset), F(Test Full Flap Motion)");
+  Serial.println("Special: R(Reset), F(Test Flap), S(Test Positioning Servo)");
   Serial.println("Sequence: Position → Drop → Return");
 }
 
@@ -111,6 +111,10 @@ void loop() {
         testFullFlapMotion();
         break;
         
+      case 'S':  // Test positioning Servo (Servo 1)
+        testPositioningServo();
+        break;
+        
       default:
         Serial.print("Unknown command: ");
         Serial.println(command);
@@ -131,11 +135,15 @@ void executeSortingSequence(int targetAngle, String material) {
   Serial.print(targetAngle);
   Serial.print("° for ");
   Serial.println(material);
+  Serial.println("DEBUG: Writing to positioningServo (Pin 9)...");
   
   positioningServo.write(targetAngle);
   delay(POSITION_DELAY);  // Wait for positioning to complete
   
   Serial.println("Step 1 complete: Arm positioned");
+  Serial.print("DEBUG: Positioning servo should now be at ");
+  Serial.print(targetAngle);
+  Serial.println("°");
   
   // Step 2: Open drop flap to release rubbish - FULL 180° MOTION
   Serial.println("Step 2: Opening drop flap (0° → 180°)");
@@ -167,11 +175,13 @@ void executeSortingSequence(int targetAngle, String material) {
   
   // Step 4: Return positioning arm to center
   Serial.println("Step 4: Returning arm to center");
+  Serial.println("DEBUG: Writing 90° to positioningServo (Pin 9)...");
   
   positioningServo.write(90);  // Return to center
   delay(RETURN_DELAY);
   
   Serial.println("Step 4 complete: Arm centered");
+  Serial.println("DEBUG: Positioning servo should now be at 90°");
   
   // Turn off LED
   digitalWrite(LED_PIN, LOW);
@@ -251,5 +261,43 @@ void testFullFlapMotion() {
   Serial.println("1. Servo is not mechanically limited");
   Serial.println("2. Servo is a 180° servo (not 90°)");
   Serial.println("3. Power supply is adequate");
+  Serial.println("========================================");
+}
+
+
+void testPositioningServo() {
+  Serial.println("========================================");
+  Serial.println("TESTING POSITIONING SERVO (Servo 1)");
+  Serial.println("Pin 9 - Should move through all bin positions");
+  Serial.println("========================================");
+  
+  digitalWrite(LED_PIN, HIGH);
+  
+  // Test each position
+  int positions[] = {0, 45, 90, 135, 180};
+  String labels[] = {"Paper (0°)", "Metal (45°)", "Plastic (90°)", "Glass (135°)", "Trash (180°)"};
+  
+  for (int i = 0; i < 5; i++) {
+    Serial.print("Moving to: ");
+    Serial.println(labels[i]);
+    positioningServo.write(positions[i]);
+    delay(1500);  // Hold position for 1.5 seconds
+  }
+  
+  // Return to center
+  Serial.println("Returning to center (90°)");
+  positioningServo.write(90);
+  delay(1000);
+  
+  digitalWrite(LED_PIN, LOW);
+  
+  Serial.println("========================================");
+  Serial.println("POSITIONING SERVO TEST COMPLETE!");
+  Serial.println("Did Servo 1 (Pin 9) move?");
+  Serial.println("If NO, check:");
+  Serial.println("1. Servo is connected to Pin 9");
+  Serial.println("2. Servo has power (5V and GND)");
+  Serial.println("3. Servo signal wire is in Pin 9");
+  Serial.println("4. Try swapping servos to test if hardware works");
   Serial.println("========================================");
 }
