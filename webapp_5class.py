@@ -14,6 +14,8 @@ from pathlib import Path
 import threading
 import base64
 import numpy as np
+import serial
+import serial.tools.list_ports
 
 app = Flask(__name__)
 
@@ -30,6 +32,11 @@ class GarbageClassifier5Class:
         self.current_frame_with_boxes = None
         self.frame_skip_counter = 0
         self.detection_frame_skip = 3  # Only run detection every 3rd frame
+        
+        # Arduino serial connection
+        self.arduino = None
+        self.arduino_port = None
+        self.arduino_connected = False
         
         # 5-class system with separate glass
         self.classes = ["paper", "metal", "plastic", "glass", "trash"]
@@ -48,9 +55,19 @@ class GarbageClassifier5Class:
             "trash": "T"
         }
         
+        # Servo angles for each material (for reference)
+        self.servo_angles = {
+            "paper": 0,     # Paper bin
+            "metal": 45,    # Metal bin
+            "plastic": 90,  # Plastic bin
+            "glass": 135,   # Glass bin
+            "trash": 180    # Trash bin
+        }
+        
         # Load models
         self.load_model()
         self.load_detection_model()
+        self.connect_arduino()
     
     def load_detection_model(self):
         """Load YOLO detection model for drawing bounding boxes."""
@@ -65,6 +82,91 @@ class GarbageClassifier5Class:
             print("   Continuing without bounding boxes...")
             self.detection_enabled = False
             return False
+    
+    def get_available_arduino_ports(self):
+        """Get list of available serial ports for Arduino."""
+        ports = []
+        for port in serial.tools.list_ports.comports():
+            # Look for Arduino-like devices
+            if any(keyword in port.description.lower() for keyword in ['arduino', 'ch340', 'cp210', 'ftdi', 'usb']):
+                ports.append({
+                    'port': port.device,
+                    'description': port.description,
+                    'manufacturer': getattr(port, 'manufacturer', 'Unknown')
+                })
+        return ports
+    
+    def connect_arduino(self, port=None):
+        """Connect to Arduino via serial."""
+        try:
+            if self.arduino and self.arduino.is_open:
+                self.arduino.close()
+            
+            if port is None:
+                # Auto-detect Arduino port
+                available_ports = self.get_available_arduino_ports()
+                if not available_ports:
+                    print("⚠️  No Arduino ports found")
+                    return False
+                port = available_ports[0]['port']
+            
+            self.arduino = serial.Serial(port, 9600, timeout=2)
+            time.sleep(2)  # Wait for Arduino to initialize
+            
+            # Test connection
+            if self.arduino.is_open:
+                self.arduino_port = port
+                self.arduino_connected = True
+                print(f"✅ Arduino connected on {port}")
+                
+                # Read any initial messages from Arduino
+                try:
+                    while self.arduino.in_waiting > 0:
+                        message = self.arduino.readline().decode().strip()
+                        if message:
+                            print(f"Arduino: {message}")
+                except:
+                    pass
+                
+                return True
+            else:
+                print(f"❌ Failed to open Arduino port {port}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Arduino connection error: {e}")
+            self.arduino_connected = False
+            return False
+    
+    def send_arduino_command(self, command):
+        """Send command to Arduino."""
+        if not self.arduino_connected or not self.arduino:
+            print(f"⚠️  Arduino not connected, command '{command}' not sent")
+            return False
+        
+        try:
+            self.arduino.write(command.encode())
+            print(f"📡 Sent command '{command}' to Arduino")
+            
+            # Read response from Arduino
+            time.sleep(0.1)  # Give Arduino time to respond
+            if self.arduino.in_waiting > 0:
+                response = self.arduino.readline().decode().strip()
+                if response:
+                    print(f"Arduino response: {response}")
+            
+            return True
+        except Exception as e:
+            print(f"❌ Error sending command to Arduino: {e}")
+            self.arduino_connected = False
+            return False
+    
+    def disconnect_arduino(self):
+        """Disconnect from Arduino."""
+        if self.arduino and self.arduino.is_open:
+            self.arduino.close()
+            self.arduino_connected = False
+            print("🔌 Arduino disconnected")
     
     def load_model(self):
         """Load the trained model."""
@@ -263,7 +365,7 @@ def stop_camera():
 
 @app.route('/api/classify', methods=['POST'])
 def classify():
-    """Classify current frame."""
+    """Classify current frame and send Arduino command."""
     frame = classifier.get_frame()
     if frame is None:
         return jsonify({'error': 'No camera frame available'})
@@ -271,11 +373,17 @@ def classify():
     pred_class, confidence = classifier.classify_frame(frame)
     
     if pred_class and confidence > classifier.confidence_threshold:
+        # Send command to Arduino
+        arduino_cmd = classifier.cmd_map.get(pred_class, 'T')
+        arduino_success = classifier.send_arduino_command(arduino_cmd)
+        
         result = {
             'success': True,
             'class': pred_class,
             'confidence': round(confidence, 3),
-            'arduino_cmd': classifier.cmd_map.get(pred_class, 'T'),
+            'arduino_cmd': arduino_cmd,
+            'arduino_sent': arduino_success,
+            'servo_angle': classifier.servo_angles.get(pred_class, 90),
             'color': classifier.colors.get(pred_class, '#FFFFFF')
         }
         classifier.last_prediction = result
@@ -296,11 +404,47 @@ def get_status():
         'model_loaded': classifier.model is not None,
         'detection_enabled': classifier.detection_enabled,
         'detection_model_loaded': classifier.detection_model is not None,
+        'arduino_connected': classifier.arduino_connected,
+        'arduino_port': classifier.arduino_port,
         'last_prediction': classifier.last_prediction,
         'confidence_threshold': classifier.confidence_threshold,
         'num_classes': len(classifier.classes),
         'classes': classifier.classes
     })
+
+@app.route('/api/arduino/ports')
+def get_arduino_ports():
+    """Get available Arduino ports."""
+    ports = classifier.get_available_arduino_ports()
+    return jsonify(ports)
+
+@app.route('/api/arduino/connect', methods=['POST'])
+def connect_arduino():
+    """Connect to Arduino."""
+    data = request.get_json()
+    port = data.get('port', None)
+    
+    success = classifier.connect_arduino(port)
+    return jsonify({
+        'success': success,
+        'connected': classifier.arduino_connected,
+        'port': classifier.arduino_port
+    })
+
+@app.route('/api/arduino/disconnect', methods=['POST'])
+def disconnect_arduino():
+    """Disconnect from Arduino."""
+    classifier.disconnect_arduino()
+    return jsonify({'success': True, 'connected': False})
+
+@app.route('/api/arduino/test', methods=['POST'])
+def test_arduino():
+    """Test Arduino connection by sending a command."""
+    data = request.get_json()
+    command = data.get('command', 'P')
+    
+    success = classifier.send_arduino_command(command)
+    return jsonify({'success': success, 'command_sent': command})
 
 @app.route('/api/toggle_detection', methods=['POST'])
 def toggle_detection():

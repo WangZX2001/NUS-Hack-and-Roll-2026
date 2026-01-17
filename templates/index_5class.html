@@ -374,6 +374,7 @@
                     <div id="resultClass" class="result-class"></div>
                     <div id="resultConfidence" class="result-confidence"></div>
                     <div id="resultArduino" class="result-arduino"></div>
+                    <div id="resultServo" class="result-servo" style="margin-top: 10px; font-size: 1em; color: #666;"></div>
                 </div>
             </div>
             
@@ -385,6 +386,7 @@
                         <div><span class="status-indicator red"></span>Camera: Not started</div>
                         <div><span class="status-indicator red"></span>Classes: Loading...</div>
                         <div><span class="status-indicator red"></span>Detection: Loading...</div>
+                        <div><span class="status-indicator red"></span>Arduino: Not connected</div>
                     </div>
                 </div>
                 
@@ -397,11 +399,31 @@
                 </div>
                 
                 <div class="control-group">
+                    <h3>🤖 Arduino Control</h3>
+                    <button id="refreshArduino" class="btn">🔄 Refresh Ports</button>
+                    <div id="arduinoPortList" class="camera-list">
+                        <div class="loading"></div> Loading Arduino ports...
+                    </div>
+                    <button id="connectArduino" class="btn success" disabled>🔌 Connect Arduino</button>
+                    <button id="disconnectArduino" class="btn danger" disabled>🔌 Disconnect Arduino</button>
+                    
+                    <div id="servoTestSection" style="margin-top: 15px; display: none;">
+                        <h4>🎯 Test Servo Positions</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px;">
+                            <button class="btn servo-test" data-cmd="P" style="background: #00FF00; color: black;">📄 Paper (0°)</button>
+                            <button class="btn servo-test" data-cmd="M" style="background: #FF0000;">🔩 Metal (45°)</button>
+                            <button class="btn servo-test" data-cmd="L" style="background: #FFA500; color: black;">🥤 Plastic (90°)</button>
+                            <button class="btn servo-test" data-cmd="G" style="background: #00BFFF;">🍶 Glass (135°)</button>
+                            <button class="btn servo-test" data-cmd="T" style="background: #8B4513; grid-column: 1 / -1;">🗑️ Trash (180°)</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
                     <h3>🎛️ Camera Controls</h3>
                     <button id="startCamera" class="btn success" disabled>▶️ Start Camera</button>
                     <button id="stopCamera" class="btn danger" disabled>⏹️ Stop Camera</button>
                 </div>
-                
                 <div class="control-group">
                     <h3>⚙️ Settings</h3>
                     <label for="confidenceSlider">Confidence Threshold: <span id="confidenceValue">0.50</span></label>
@@ -443,11 +465,22 @@
         const confidenceValue = document.getElementById('confidenceValue');
         const detectionToggle = document.getElementById('detectionToggle');
         
+        // Arduino elements
+        const refreshArduino = document.getElementById('refreshArduino');
+        const arduinoPortList = document.getElementById('arduinoPortList');
+        const connectArduino = document.getElementById('connectArduino');
+        const disconnectArduino = document.getElementById('disconnectArduino');
+        const servoTestSection = document.getElementById('servoTestSection');
+        const resultServo = document.getElementById('resultServo');
+        
+        let selectedArduinoPort = null;
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             confidenceSlider.value = 0.50;
             confidenceValue.textContent = '0.50';
             loadCameras();
+            loadArduinoPorts();
             updateStatus();
             setInterval(updateStatus, 2000);
         });
@@ -564,6 +597,16 @@
                     resultClass.style.color = result.color;
                     resultConfidence.textContent = `Confidence: ${result.confidence}`;
                     resultArduino.textContent = `Arduino Command: ${result.arduino_cmd}`;
+                    
+                    // Show servo information
+                    if (result.arduino_sent) {
+                        resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
+                        resultServo.style.color = '#27ae60';
+                    } else {
+                        resultServo.textContent = `⚠️ Arduino not connected - servo command not sent`;
+                        resultServo.style.color = '#e74c3c';
+                    }
+                    
                     resultDisplay.classList.remove('hidden');
                 } else {
                     alert(result.message || 'Classification failed');
@@ -578,6 +621,111 @@
             }
         }
         
+        // Load Arduino ports
+        async function loadArduinoPorts() {
+            try {
+                const response = await fetch('/api/arduino/ports');
+                const ports = await response.json();
+                
+                arduinoPortList.innerHTML = '';
+                
+                if (ports.length === 0) {
+                    arduinoPortList.innerHTML = '<div class="alert error">No Arduino ports found. Make sure Arduino is connected.</div>';
+                    return;
+                }
+                
+                ports.forEach(port => {
+                    const div = document.createElement('div');
+                    div.className = 'camera-item';
+                    div.innerHTML = `
+                        <strong>${port.port}</strong><br>
+                        ${port.description}<br>
+                        <small>${port.manufacturer}</small>
+                    `;
+                    
+                    div.addEventListener('click', () => selectArduinoPort(port.port, div));
+                    arduinoPortList.appendChild(div);
+                });
+            } catch (error) {
+                arduinoPortList.innerHTML = '<div class="alert error">Error loading Arduino ports</div>';
+                console.error('Error loading Arduino ports:', error);
+            }
+        }
+        
+        // Select Arduino port
+        function selectArduinoPort(port, element) {
+            document.querySelectorAll('#arduinoPortList .camera-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            selectedArduinoPort = port;
+            connectArduino.disabled = false;
+        }
+        
+        // Connect to Arduino
+        async function connectToArduino() {
+            if (!selectedArduinoPort) return;
+            
+            try {
+                connectArduino.disabled = true;
+                connectArduino.innerHTML = '<div class="loading"></div> Connecting...';
+                
+                const response = await fetch('/api/arduino/connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({port: selectedArduinoPort})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Arduino connected on ${result.port}`);
+                } else {
+                    alert('Failed to connect to Arduino');
+                    connectArduino.disabled = false;
+                }
+                
+                connectArduino.innerHTML = '🔌 Connect Arduino';
+            } catch (error) {
+                console.error('Error connecting to Arduino:', error);
+                connectArduino.disabled = false;
+                connectArduino.innerHTML = '🔌 Connect Arduino';
+            }
+        }
+        
+        // Disconnect from Arduino
+        async function disconnectFromArduino() {
+            try {
+                await fetch('/api/arduino/disconnect', {method: 'POST'});
+                alert('Arduino disconnected');
+            } catch (error) {
+                console.error('Error disconnecting Arduino:', error);
+            }
+        }
+        
+        // Test servo position
+        async function testServo(command) {
+            try {
+                const response = await fetch('/api/arduino/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({command: command})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log(`Servo test command '${command}' sent successfully`);
+                } else {
+                    alert('Failed to send servo test command');
+                }
+            } catch (error) {
+                console.error('Error testing servo:', error);
+                alert('Error testing servo');
+            }
+        }
+        
         // Update system status
         async function updateStatus() {
             try {
@@ -589,6 +737,7 @@
                     <div><span class="status-indicator ${status.camera_running ? 'green' : 'red'}"></span>Camera: ${status.camera_running ? `Running (${status.camera_index})` : 'Not started'}</div>
                     <div><span class="status-indicator ${status.num_classes === 5 ? 'green' : 'yellow'}"></span>Classes: ${status.num_classes} (${status.num_classes === 5 ? 'with glass' : 'glass grouped'})</div>
                     <div><span class="status-indicator ${status.detection_model_loaded ? (status.detection_enabled ? 'green' : 'yellow') : 'red'}"></span>Detection: ${status.detection_model_loaded ? (status.detection_enabled ? 'Enabled' : 'Disabled') : 'Not available'}</div>
+                    <div><span class="status-indicator ${status.arduino_connected ? 'green' : 'red'}"></span>Arduino: ${status.arduino_connected ? `Connected (${status.arduino_port})` : 'Not connected'}</div>
                 `;
                 
                 // Update detection toggle state
@@ -596,6 +745,11 @@
                     detectionToggle.checked = status.detection_enabled;
                     detectionToggle.disabled = !status.detection_model_loaded;
                 }
+                
+                // Update Arduino controls
+                disconnectArduino.disabled = !status.arduino_connected;
+                servoTestSection.style.display = status.arduino_connected ? 'block' : 'none';
+                
             } catch (error) {
                 console.error('Error updating status:', error);
             }
@@ -646,6 +800,19 @@
         classifyBtn.addEventListener('click', classify);
         confidenceSlider.addEventListener('input', updateConfidence);
         detectionToggle.addEventListener('change', toggleDetection);
+        
+        // Arduino event listeners
+        refreshArduino.addEventListener('click', loadArduinoPorts);
+        connectArduino.addEventListener('click', connectToArduino);
+        disconnectArduino.addEventListener('click', disconnectFromArduino);
+        
+        // Servo test buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('servo-test')) {
+                const command = e.target.getAttribute('data-cmd');
+                testServo(command);
+            }
+        });
         
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {

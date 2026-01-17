@@ -14,7 +14,7 @@ Built for **Hacker-and-Roll 2026**.
    * 🍶 `glass`
    * 🗑️ `trash`
 3. **Real-time Processing**: Live camera feed with instant classification
-4. **Arduino Integration**: Sends commands to control physical sorting bins
+4. **Arduino Integration**: Automatically controls servo motor to sort waste into bins
 5. **High Accuracy**: 97.5% accuracy with proper glass separation
 
 ## 🌐 Web Interface
@@ -24,9 +24,11 @@ The system features a modern web interface with:
 - **Optional object detection boxes** with green bounding boxes around detected items
 - **Performance optimization** - detection can be toggled on/off for smooth video
 - **One-click classification** with visual results
+- **Arduino control panel** with port selection and servo testing
+- **Automatic servo control** - servo moves to correct bin after classification
 - **Confidence threshold adjustment** for optimal performance
 - **Color-coded results** for each material type
-- **Real-time status monitoring**
+- **Real-time status monitoring** for camera, Arduino, and AI models
 - **Smart frame processing** with automatic quality adjustment
 
 ## 🧠 Trained AI Model
@@ -53,6 +55,8 @@ yolov8n.pt                                               # Detection model (auto
 Hacker-and-Roll-2026/
 │
 ├── webapp_5class.py                    # Main web application
+├── arduino_servo_controller.ino       # Arduino servo control code
+├── ARDUINO_SETUP.md                   # Arduino setup guide
 ├── create_5_class_dataset.py           # Dataset creation tool
 ├── test_5class_model.py               # Model testing utility
 ├── requirements.txt                    # Python dependencies
@@ -89,10 +93,12 @@ Navigate to: **http://localhost:5000**
 
 ### 4. Use the Interface
 1. **Select Camera**: Choose your external webcam
-2. **Start Camera**: Begin live video feed (detection boxes disabled by default for performance)
-3. **Optional Detection**: Enable bounding boxes if desired (may reduce video smoothness)
-4. **Classify**: Point camera at waste item and click "Classify Material"
-5. **View Results**: See classification, confidence, and Arduino command
+2. **Connect Arduino**: Select Arduino port and connect (see [Arduino Setup Guide](ARDUINO_SETUP.md))
+3. **Start Camera**: Begin live video feed (detection boxes disabled by default for performance)
+4. **Optional Detection**: Enable bounding boxes if desired (may reduce video smoothness)
+5. **Classify**: Point camera at waste item and click "Classify Material"
+6. **Automatic Sorting**: Servo motor automatically moves to correct bin position
+7. **View Results**: See classification, confidence, Arduino command, and servo angle
 
 ## 🎯 Classification System
 
@@ -113,18 +119,35 @@ Navigate to: **http://localhost:5000**
 
 ## 🔌 Arduino Integration
 
-The system sends single-character commands via serial connection:
+The system automatically controls a servo motor to sort waste into physical bins.
 
-```python
-# Arduino command mapping
-commands = {
-    "paper": "P",    # Paper bin
-    "metal": "M",    # Metal bin  
-    "plastic": "L",  # Plastic bin
-    "glass": "G",    # Glass bin
-    "trash": "T"     # Trash/other bin
-}
-```
+### Hardware Setup
+- **Arduino Uno** with servo motor on pin 9
+- **5 bins** positioned at different servo angles
+- **USB connection** to computer running the webapp
+
+### Servo Positions & Commands
+
+| Material | Arduino Command | Servo Angle | Bin Position |
+|----------|----------------|-------------|--------------|
+| 📄 Paper | `P` | 0° | Far Left |
+| 🔩 Metal | `M` | 45° | Left |
+| 🥤 Plastic | `L` | 90° | Center |
+| 🍶 Glass | `G` | 135° | Right |
+| 🗑️ Trash | `T` | 180° | Far Right |
+
+### Setup Instructions
+See detailed [Arduino Setup Guide](ARDUINO_SETUP.md) for:
+- Hardware wiring diagrams
+- Arduino code installation
+- Troubleshooting tips
+- Physical bin positioning
+
+### Web Interface Features
+- **Port Detection**: Automatically finds connected Arduino
+- **Connection Status**: Real-time Arduino connection monitoring
+- **Servo Testing**: Manual servo position testing buttons
+- **Automatic Control**: Servo moves automatically after classification
 
 ## 🛠 Dataset & Training
 
