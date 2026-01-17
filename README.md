@@ -4,7 +4,42 @@ An AI-powered vision system that automatically classifies and sorts waste into *
 
 Built for **Hacker-and-Roll 2026**.
 
-## ⚡ One-Command Setup (Recommended)
+## 🚀 **NEW USER? START HERE!**
+
+### **📋 Complete Setup Guide for Beginners**
+**👉 [SETUP_GUIDE.md](SETUP_GUIDE.md) - Step-by-step instructions for new users**
+
+This guide covers:
+- ✅ Installing Python and dependencies
+- ✅ Arduino IDE setup and wiring
+- ✅ Troubleshooting common issues
+- ✅ Hardware requirements
+- ✅ First-time user walkthrough
+
+### **🔧 Automated Installation**
+For automatic dependency installation:
+```bash
+python3 install_dependencies.py
+```
+
+### **🔍 Setup Verification**
+Before starting, run our setup checker:
+```bash
+python3 check_setup.py
+```
+
+### **🚨 Connection Issues?**
+If Arduino won't connect, run diagnostics:
+```bash
+python3 arduino_diagnostic.py        # Full system diagnostic
+python3 check_arduino_connection.py  # Real-time connection monitor
+```
+
+**👉 [DIAGNOSTIC_TOOLS.md](DIAGNOSTIC_TOOLS.md) - Complete guide to all troubleshooting tools**
+
+---
+
+## ⚡ Quick Start (For Experienced Users)
 
 For demos, everything can be set up with **one command**:
 
