@@ -21,18 +21,22 @@ Built for **Hacker-and-Roll 2026**.
 
 The system features a modern web interface with:
 - **Live camera feed** with multiple camera support
+- **Optional object detection boxes** with green bounding boxes around detected items
+- **Performance optimization** - detection can be toggled on/off for smooth video
 - **One-click classification** with visual results
 - **Confidence threshold adjustment** for optimal performance
 - **Color-coded results** for each material type
 - **Real-time status monitoring**
+- **Smart frame processing** with automatic quality adjustment
 
 ## 🧠 Trained AI Model
 
-The model uses **YOLOv8 Nano (classification)** trained on 2,527 real garbage images with proper 5-class separation.
+The model uses **YOLOv8 Nano (classification)** trained on 2,527 real garbage images with proper 5-class separation. Additionally, **YOLOv8 Nano (detection)** is used for drawing green bounding boxes around detected objects in the camera feed.
 
 **Current model location:**
 ```
-runs/classify/runs/classify/5class_model/weights/best.pt
+runs/classify/runs/classify/5class_model/weights/best.pt  # Classification model
+yolov8n.pt                                               # Detection model (auto-downloaded)
 ```
 
 **Performance:**
@@ -85,9 +89,10 @@ Navigate to: **http://localhost:5000**
 
 ### 4. Use the Interface
 1. **Select Camera**: Choose your external webcam
-2. **Start Camera**: Begin live video feed
-3. **Classify**: Point camera at waste item and click "Classify Material"
-4. **View Results**: See classification, confidence, and Arduino command
+2. **Start Camera**: Begin live video feed (detection boxes disabled by default for performance)
+3. **Optional Detection**: Enable bounding boxes if desired (may reduce video smoothness)
+4. **Classify**: Point camera at waste item and click "Classify Material"
+5. **View Results**: See classification, confidence, and Arduino command
 
 ## 🎯 Classification System
 
@@ -186,10 +191,13 @@ python create_5_class_dataset.py
 
 ### 🔧 Technical Features
 - **Multiple Camera Support**: Automatically detects available cameras
+- **Optional Object Detection**: Green bounding boxes with performance optimization
+- **Smart Frame Processing**: Automatic resolution and quality adjustment
 - **Confidence Adjustment**: Real-time threshold tuning
 - **Status Monitoring**: Live system health indicators
 - **Error Handling**: Graceful failure recovery
-- **Performance Optimized**: ~30 FPS video streaming
+- **Performance Optimized**: ~20 FPS video streaming with frame skipping
+- **Detection Toggle**: Enable/disable bounding boxes for optimal performance
 
 ## 🎉 Results
 
