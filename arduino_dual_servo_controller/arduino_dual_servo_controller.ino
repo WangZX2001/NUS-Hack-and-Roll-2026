@@ -1,11 +1,11 @@
 /*
  * Arduino Dual Servo Controller for Garbage Classification System
  * Servo 1: Positioning arm (swings to correct bin)
- * Servo 2: Drop-down flap (opens to release rubbish)
+ * Servo 2: Drop-down flap (opens to release rubbish) - FULL 180° MOTION
  * 
  * Hardware Setup:
  * - Servo 1 (positioning) connected to pin 9
- * - Servo 2 (drop flap) connected to pin 10
+ * - Servo 2 (drop flap) connected to pin 10 - moves 0° to 180° (full range)
  * - Power: 5V and GND for both servos
  * - Signals: Digital pins 9 and 10
  * 
@@ -15,6 +15,8 @@
  * L = Plastic (90°)
  * G = Glass (135°)
  * T = Trash (180°)
+ * 
+ * Flap Motion: Smooth sweep from 0° (closed) to 180° (fully open) and back
  */
 
 #include <Servo.h>
@@ -38,9 +40,9 @@ const int FLAP_OPEN = 180;     // Flap open (dropping rubbish)
 const int LED_PIN = 13;
 
 // Timing constants
-const int POSITION_DELAY = 500;  // Time to wait after positioning (ms)
-const int DROP_DELAY = 1000;     // Time to keep flap open (ms)
-const int RETURN_DELAY = 300;    // Time to wait before returning to center (ms)
+const int POSITION_DELAY = 800;  // Time to wait after positioning (ms) - increased for full motion
+const int DROP_DELAY = 1500;     // Time to keep flap open (ms) - increased for full 180° motion
+const int RETURN_DELAY = 800;    // Time to wait before returning to center (ms) - increased
 
 void setup() {
   // Initialize serial communication
@@ -130,21 +132,33 @@ void executeSortingSequence(int targetAngle, String material) {
   
   Serial.println("Step 1 complete: Arm positioned");
   
-  // Step 2: Open drop flap to release rubbish
-  Serial.println("Step 2: Opening drop flap");
+  // Step 2: Open drop flap to release rubbish - FULL 180° MOTION
+  Serial.println("Step 2: Opening drop flap (0° → 180°)");
   
-  dropFlapServo.write(FLAP_OPEN);
+  // Smooth sweep from 0° to 180° for full motion
+  for (int angle = FLAP_CLOSED; angle <= FLAP_OPEN; angle += 2) {
+    dropFlapServo.write(angle);
+    delay(10);  // Small delay for smooth motion
+  }
+  dropFlapServo.write(FLAP_OPEN);  // Ensure we reach exactly 180°
+  
   delay(DROP_DELAY);  // Keep flap open for rubbish to drop
   
-  Serial.println("Step 2 complete: Rubbish dropped");
+  Serial.println("Step 2 complete: Rubbish dropped (flap at 180°)");
   
-  // Step 3: Close drop flap
-  Serial.println("Step 3: Closing drop flap");
+  // Step 3: Close drop flap - FULL 180° RETURN MOTION
+  Serial.println("Step 3: Closing drop flap (180° → 0°)");
   
-  dropFlapServo.write(FLAP_CLOSED);
+  // Smooth sweep from 180° back to 0°
+  for (int angle = FLAP_OPEN; angle >= FLAP_CLOSED; angle -= 2) {
+    dropFlapServo.write(angle);
+    delay(10);  // Small delay for smooth motion
+  }
+  dropFlapServo.write(FLAP_CLOSED);  // Ensure we reach exactly 0°
+  
   delay(RETURN_DELAY);
   
-  Serial.println("Step 3 complete: Flap closed");
+  Serial.println("Step 3 complete: Flap closed (back to 0°)");
   
   // Step 4: Return positioning arm to center
   Serial.println("Step 4: Returning arm to center");
