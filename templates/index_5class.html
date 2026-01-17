@@ -617,8 +617,8 @@
                     // Show servo information with delay indication
                     if (result.arduino_sent === false && status.arduino_connected) {
                         // Start countdown
-                        let countdown = 3;
-                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} seconds...`;
+                        let countdown = 1;
+                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} second...`;
                         resultServo.style.color = '#f39c12';
                         document.getElementById('manualCommand').style.display = 'none';
                         
@@ -626,7 +626,7 @@
                         const countdownInterval = setInterval(() => {
                             countdown--;
                             if (countdown > 0) {
-                                resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} seconds...`;
+                                resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} second...`;
                             } else {
                                 resultServo.textContent = `🚀 Servo moving to ${result.servo_angle}°...`;
                                 resultServo.style.color = '#e67e22';
@@ -638,7 +638,7 @@
                         setTimeout(() => {
                             resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
                             resultServo.style.color = '#27ae60';
-                        }, 3500); // 3.5 seconds total
+                        }, 1500); // 1.5 seconds total (1s delay + 0.5s for movement)
                         
                     } else if (result.arduino_sent) {
                         resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
