@@ -587,12 +587,12 @@ def video_feed():
 
 if __name__ == '__main__':
     print("🌐 Starting 5-Class Garbage Classification Web App...")
-    print("📱 Open your browser and go to: http://localhost:5000")
-    print("🗂️  Classes: paper, metal, plastic, glass, trash")
+    print("📱 Open your browser and go to: http://localhost:5001")
+    print("git 🗂️  Classes: paper, metal, plastic, glass, trash")
     print("🛑 Press Ctrl+C to stop")
     
     try:
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\n👋 Shutting down...")
         classifier.stop_camera()

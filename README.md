@@ -89,7 +89,7 @@ python webapp_5class.py
 ```
 
 ### 3. Open Your Browser
-Navigate to: **http://localhost:5000**
+Navigate to: **http://localhost:5001**
 
 ### 4. Use the Interface
 1. **Select Camera**: Choose your external webcam

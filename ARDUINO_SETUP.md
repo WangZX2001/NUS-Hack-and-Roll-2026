@@ -77,7 +77,7 @@ The servo will move to these angles based on classification:
 
 ### Web Interface Testing:
 1. Run the Python webapp: `python webapp_5class.py`
-2. Open browser: http://localhost:5000
+2. Open browser: http://localhost:5001
 3. Go to **Arduino Control** section
 4. Click **Refresh Ports** to find your Arduino
 5. Select the Arduino port and click **Connect**

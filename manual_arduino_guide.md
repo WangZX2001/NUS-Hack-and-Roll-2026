@@ -21,7 +21,7 @@ Since the web interface can't connect to Arduino automatically, you can control 
 ```bash
 python webapp_5class.py
 ```
-- Open browser: http://localhost:5000
+- Open browser: http://localhost:5001
 - Start camera
 - **Ignore Arduino connection errors** - we'll control manually
 
