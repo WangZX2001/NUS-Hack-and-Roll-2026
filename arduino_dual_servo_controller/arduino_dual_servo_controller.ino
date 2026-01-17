@@ -32,7 +32,7 @@ const int TRASH_ANGLE = 180;   // Trash bin
 
 // Servo 2 positions for drop flap
 const int FLAP_CLOSED = 0;     // Flap closed (holding rubbish)
-const int FLAP_OPEN = 90;      // Flap open (dropping rubbish)
+const int FLAP_OPEN = 180;     // Flap open (dropping rubbish)
 
 // LED pin for status indication
 const int LED_PIN = 13;
