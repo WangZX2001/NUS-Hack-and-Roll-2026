@@ -4,6 +4,14 @@ An AI-powered vision system that automatically classifies and sorts waste into *
 
 Built for **Hacker-and-Roll 2026**.
 
+## ⚡ One-Command Setup (Recommended)
+
+For demos, everything can be set up with **one command**:
+
+```bash
+python3 quick_setup.py
+```
+
 ## 🚀 What this project does
 
 1. **Web Interface**: Easy-to-use browser-based camera interface
@@ -55,6 +63,7 @@ yolov8n.pt                                               # Detection model (auto
 Hacker-and-Roll-2026/
 │
 ├── webapp_5class.py                    # Main web application
+├── quick_setup.py                     # One-command setup script
 ├── arduino_servo_controller.ino       # Arduino servo control code
 ├── ARDUINO_SETUP.md                   # Arduino setup guide
 ├── create_5_class_dataset.py           # Dataset creation tool
@@ -80,12 +89,12 @@ Hacker-and-Roll-2026/
 
 ### 1. Install Dependencies
 ```bash
-pip install -r requirements.txt
+python3 -m pip install -r requirements.txt
 ```
 
 ### 2. Run the Web Application
 ```bash
-python webapp_5class.py
+python3 webapp_5class.py
 ```
 
 ### 3. Open Your Browser
