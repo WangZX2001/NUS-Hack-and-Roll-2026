@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗑️ AI Garbage Classification - 5 Classes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .class-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .class-indicator {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .class-paper { background: #00FF00; color: black; }
+        .class-metal { background: #FF0000; color: white; }
+        .class-plastic { background: #FFA500; color: black; }
+        .class-glass { background: #00BFFF; color: white; }
+        .class-trash { background: #8B4513; color: white; }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+        
+        .video-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        #videoFeed {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+        
+        .video-placeholder {
+            width: 100%;
+            height: 400px;
+            background: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+            border-radius: 10px;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-group h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .camera-list {
+            margin-bottom: 15px;
+        }
+        
+        .camera-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .camera-item:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+        }
+        
+        .camera-item.selected {
+            border-color: #27ae60;
+            background: #d4edda;
+        }
+        
+        .camera-item.not-working {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn.success {
+            background: #27ae60;
+        }
+        
+        .btn.success:hover {
+            background: #229954;
+        }
+        
+        .btn.danger {
+            background: #e74c3c;
+        }
+        
+        .btn.danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn.classify {
+            background: #f39c12;
+            font-size: 1.2em;
+            padding: 15px;
+        }
+        
+        .btn.classify:hover {
+            background: #e67e22;
+        }
+        
+        .result-display {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .result-display.hidden {
+            display: none;
+        }
+        
+        .result-class {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .result-confidence {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        .result-arduino {
+            font-size: 1.1em;
+            background: #2c3e50;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .confidence-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.green {
+            background: #27ae60;
+        }
+        
+        .status-indicator.red {
+            background: #e74c3c;
+        }
+        
+        .status-indicator.yellow {
+            background: #f39c12;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .class-indicators {
+                gap: 8px;
+            }
+            
+            .class-indicator {
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗑️ AI Garbage Classification</h1>
+            <p>Smart waste sorting with 5 material types</p>
+            <div class="class-indicators">
+                <div class="class-indicator class-paper">📄 PAPER</div>
+                <div class="class-indicator class-metal">🔩 METAL</div>
+                <div class="class-indicator class-plastic">🥤 PLASTIC</div>
+                <div class="class-indicator class-glass">🍶 GLASS</div>
+                <div class="class-indicator class-trash">🗑️ TRASH</div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="video-section">
+                <h2>📹 Camera Feed</h2>
+                <div class="video-container">
+                    <div id="videoPlaceholder" class="video-placeholder">
+                        📷 Select and start a camera to begin
+                    </div>
+                    <img id="videoFeed" src="/video_feed" style="display: none;" alt="Camera feed">
+                </div>
+                
+                <button id="classifyBtn" class="btn classify" disabled>
+                    🔍 Classify Material
+                </button>
+                
+                <div id="resultDisplay" class="result-display hidden">
+                    <div id="resultClass" class="result-class"></div>
+                    <div id="resultConfidence" class="result-confidence"></div>
+                    <div id="resultArduino" class="result-arduino"></div>
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <div class="control-group">
+                    <h3>📱 System Status</h3>
+                    <div id="systemStatus">
+                        <div><span class="status-indicator red"></span>Model: Loading...</div>
+                        <div><span class="status-indicator red"></span>Camera: Not started</div>
+                        <div><span class="status-indicator red"></span>Classes: Loading...</div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>📹 Camera Selection</h3>
+                    <button id="refreshCameras" class="btn">🔄 Refresh Cameras</button>
+                    <div id="cameraList" class="camera-list">
+                        <div class="loading"></div> Loading cameras...
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>🎛️ Camera Controls</h3>
+                    <button id="startCamera" class="btn success" disabled>▶️ Start Camera</button>
+                    <button id="stopCamera" class="btn danger" disabled>⏹️ Stop Camera</button>
+                </div>
+                
+                <div class="control-group">
+                    <h3>⚙️ Settings</h3>
+                    <label for="confidenceSlider">Confidence Threshold: <span id="confidenceValue">0.50</span></label>
+                    <input type="range" id="confidenceSlider" class="confidence-slider" 
+                           min="0.1" max="1.0" step="0.05" value="0.50">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedCamera = null;
+        let isClassifying = false;
+        
+        // DOM elements
+        const videoFeed = document.getElementById('videoFeed');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const classifyBtn = document.getElementById('classifyBtn');
+        const resultDisplay = document.getElementById('resultDisplay');
+        const resultClass = document.getElementById('resultClass');
+        const resultConfidence = document.getElementById('resultConfidence');
+        const resultArduino = document.getElementById('resultArduino');
+        const systemStatus = document.getElementById('systemStatus');
+        const cameraList = document.getElementById('cameraList');
+        const refreshCameras = document.getElementById('refreshCameras');
+        const startCamera = document.getElementById('startCamera');
+        const stopCamera = document.getElementById('stopCamera');
+        const confidenceSlider = document.getElementById('confidenceSlider');
+        const confidenceValue = document.getElementById('confidenceValue');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            confidenceSlider.value = 0.50;
+            confidenceValue.textContent = '0.50';
+            loadCameras();
+            updateStatus();
+            setInterval(updateStatus, 2000);
+        });
+        
+        // Load available cameras
+        async function loadCameras() {
+            try {
+                const response = await fetch('/api/cameras');
+                const cameras = await response.json();
+                
+                cameraList.innerHTML = '';
+                
+                if (cameras.length === 0) {
+                    cameraList.innerHTML = '<div class="alert error">No cameras found</div>';
+                    return;
+                }
+                
+                cameras.forEach(camera => {
+                    const div = document.createElement('div');
+                    div.className = `camera-item ${!camera.working ? 'not-working' : ''}`;
+                    div.innerHTML = `
+                        <strong>Camera ${camera.index}</strong><br>
+                        Resolution: ${camera.resolution}<br>
+                        Status: ${camera.status}
+                    `;
+                    
+                    if (camera.working) {
+                        div.addEventListener('click', () => selectCamera(camera.index, div));
+                    }
+                    
+                    cameraList.appendChild(div);
+                });
+            } catch (error) {
+                cameraList.innerHTML = '<div class="alert error">Error loading cameras</div>';
+                console.error('Error loading cameras:', error);
+            }
+        }
+        
+        // Select camera
+        function selectCamera(index, element) {
+            document.querySelectorAll('.camera-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            selectedCamera = index;
+            startCamera.disabled = false;
+        }
+        
+        // Start camera
+        async function startCameraFeed() {
+            if (selectedCamera === null) return;
+            
+            try {
+                startCamera.disabled = true;
+                startCamera.innerHTML = '<div class="loading"></div> Starting...';
+                
+                const response = await fetch('/api/start_camera', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({camera_index: selectedCamera})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    videoPlaceholder.style.display = 'none';
+                    videoFeed.style.display = 'block';
+                    classifyBtn.disabled = false;
+                    stopCamera.disabled = false;
+                    startCamera.innerHTML = '▶️ Start Camera';
+                } else {
+                    alert('Failed to start camera');
+                    startCamera.disabled = false;
+                    startCamera.innerHTML = '▶️ Start Camera';
+                }
+            } catch (error) {
+                console.error('Error starting camera:', error);
+                startCamera.disabled = false;
+                startCamera.innerHTML = '▶️ Start Camera';
+            }
+        }
+        
+        // Stop camera
+        async function stopCameraFeed() {
+            try {
+                await fetch('/api/stop_camera', {method: 'POST'});
+                
+                videoFeed.style.display = 'none';
+                videoPlaceholder.style.display = 'flex';
+                classifyBtn.disabled = true;
+                stopCamera.disabled = true;
+                startCamera.disabled = false;
+                resultDisplay.classList.add('hidden');
+            } catch (error) {
+                console.error('Error stopping camera:', error);
+            }
+        }
+        
+        // Classify current frame
+        async function classify() {
+            if (isClassifying) return;
+            
+            isClassifying = true;
+            classifyBtn.disabled = true;
+            classifyBtn.innerHTML = '<div class="loading"></div> Classifying...';
+            
+            try {
+                const response = await fetch('/api/classify', {method: 'POST'});
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultClass.textContent = result.class;
+                    resultClass.style.color = result.color;
+                    resultConfidence.textContent = `Confidence: ${result.confidence}`;
+                    resultArduino.textContent = `Arduino Command: ${result.arduino_cmd}`;
+                    resultDisplay.classList.remove('hidden');
+                } else {
+                    alert(result.message || 'Classification failed');
+                }
+            } catch (error) {
+                console.error('Error classifying:', error);
+                alert('Classification error');
+            } finally {
+                isClassifying = false;
+                classifyBtn.disabled = false;
+                classifyBtn.innerHTML = '🔍 Classify Material';
+            }
+        }
+        
+        // Update system status
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                
+                systemStatus.innerHTML = `
+                    <div><span class="status-indicator ${status.model_loaded ? 'green' : 'red'}"></span>Model: ${status.model_loaded ? 'Ready' : 'Not loaded'}</div>
+                    <div><span class="status-indicator ${status.camera_running ? 'green' : 'red'}"></span>Camera: ${status.camera_running ? `Running (${status.camera_index})` : 'Not started'}</div>
+                    <div><span class="status-indicator ${status.num_classes === 5 ? 'green' : 'yellow'}"></span>Classes: ${status.num_classes} (${status.num_classes === 5 ? 'with glass' : 'glass grouped'})</div>
+                `;
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+        
+        // Update confidence threshold
+        async function updateConfidence() {
+            const threshold = parseFloat(confidenceSlider.value);
+            confidenceValue.textContent = threshold.toFixed(2);
+            
+            try {
+                await fetch('/api/set_confidence', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({threshold: threshold})
+                });
+            } catch (error) {
+                console.error('Error updating confidence:', error);
+            }
+        }
+        
+        // Event listeners
+        refreshCameras.addEventListener('click', loadCameras);
+        startCamera.addEventListener('click', startCameraFeed);
+        stopCamera.addEventListener('click', stopCameraFeed);
+        classifyBtn.addEventListener('click', classify);
+        confidenceSlider.addEventListener('input', updateConfidence);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && !classifyBtn.disabled) {
+                e.preventDefault();
+                classify();
+            }
+        });
+    </script>
+</body>
+</html>
