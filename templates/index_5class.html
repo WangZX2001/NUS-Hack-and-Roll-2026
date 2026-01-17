@@ -416,13 +416,19 @@
                     <button id="disconnectArduino" class="btn danger" disabled>🔌 Disconnect Arduino</button>
                     
                     <div id="servoTestSection" style="margin-top: 15px; display: none;">
-                        <h4>🎯 Test Servo Positions</h4>
+                        <h4>🎯 Test Dual Servo Sequence</h4>
+                        <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                            Each button tests: Position → Drop flap → Close flap → Return center
+                        </p>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px;">
                             <button class="btn servo-test" data-cmd="P" style="background: #00FF00; color: black;">📄 Paper (0°)</button>
                             <button class="btn servo-test" data-cmd="M" style="background: #FF0000;">🔩 Metal (45°)</button>
                             <button class="btn servo-test" data-cmd="L" style="background: #FFA500; color: black;">🥤 Plastic (90°)</button>
                             <button class="btn servo-test" data-cmd="G" style="background: #00BFFF;">🍶 Glass (135°)</button>
                             <button class="btn servo-test" data-cmd="T" style="background: #8B4513; grid-column: 1 / -1;">🗑️ Trash (180°)</button>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn servo-test" data-cmd="R" style="background: #6c757d; color: white; width: 100%;">🔄 Reset to Center</button>
                         </div>
                     </div>
                 </div>
@@ -614,11 +620,11 @@
                     // Show immediate result
                     resultDisplay.classList.remove('hidden');
                     
-                    // Show servo information with delay indication
+                    // Show servo information with dual servo sequence
                     if (result.arduino_sent === false && status.arduino_connected) {
                         // Start countdown
                         let countdown = 1;
-                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} second...`;
+                        resultServo.textContent = `⏳ Dual servo sequence starts in ${countdown} second...`;
                         resultServo.style.color = '#f39c12';
                         document.getElementById('manualCommand').style.display = 'none';
                         
@@ -626,22 +632,22 @@
                         const countdownInterval = setInterval(() => {
                             countdown--;
                             if (countdown > 0) {
-                                resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} second...`;
+                                resultServo.textContent = `⏳ Dual servo sequence starts in ${countdown} second...`;
                             } else {
-                                resultServo.textContent = `🚀 Servo moving to ${result.servo_angle}°...`;
+                                resultServo.textContent = `🚀 Executing: Position → Drop → Close → Return`;
                                 resultServo.style.color = '#e67e22';
                                 clearInterval(countdownInterval);
                             }
                         }, 1000);
                         
-                        // Final confirmation after movement
+                        // Final confirmation after full sequence
                         setTimeout(() => {
-                            resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
+                            resultServo.textContent = `🎯 Dual servo sequence complete! Rubbish sorted to ${result.class} bin ✅`;
                             resultServo.style.color = '#27ae60';
-                        }, 1500); // 1.5 seconds total (1s delay + 0.5s for movement)
+                        }, 4000); // 4 seconds total (1s delay + 3s sequence)
                         
                     } else if (result.arduino_sent) {
-                        resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
+                        resultServo.textContent = `🎯 Dual servo sequence complete! Rubbish sorted ✅`;
                         resultServo.style.color = '#27ae60';
                         document.getElementById('manualCommand').style.display = 'none';
                     } else {
@@ -654,7 +660,7 @@
                         manualCmd.style.display = 'block';
                         manualInstr.innerHTML = `
                             Type <strong>"${result.arduino_cmd}"</strong> in Arduino Serial Monitor<br>
-                            <small>This will move servo to ${result.servo_angle}° for ${result.class}</small>
+                            <small>Sequence: Position to ${result.servo_angle}° → Open flap → Close flap → Return center</small>
                         `;
                     }
                 } else {

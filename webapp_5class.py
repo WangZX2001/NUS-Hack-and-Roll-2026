@@ -64,6 +64,15 @@ class GarbageClassifier5Class:
             "trash": 180    # Trash bin
         }
         
+        # Dual servo sequence description
+        self.servo_sequence = {
+            "paper": "Position to 0° → Open flap → Close flap → Return center",
+            "metal": "Position to 45° → Open flap → Close flap → Return center",
+            "plastic": "Position to 90° → Open flap → Close flap → Return center",
+            "glass": "Position to 135° → Open flap → Close flap → Return center",
+            "trash": "Position to 180° → Open flap → Close flap → Return center"
+        }
+        
         # Load models
         self.load_model()
         self.load_detection_model()
@@ -186,13 +195,14 @@ class GarbageClassifier5Class:
             return False
     
     def send_arduino_command(self, command):
-        """Send command to Arduino."""
+        """Send command to Arduino for dual servo sequence."""
         if not self.arduino_connected or not self.arduino:
             print(f"⚠️  Arduino not connected, command '{command}' not sent")
             return False
         
         try:
-            print(f"📡 Sending command '{command}' to Arduino...")
+            print(f"📡 Sending dual servo command '{command}' to Arduino...")
+            print("   Sequence: Position → Drop flap → Close flap → Return center")
             
             # Clear any pending input
             self.arduino.reset_input_buffer()
@@ -201,38 +211,38 @@ class GarbageClassifier5Class:
             self.arduino.write(command.encode())
             self.arduino.flush()  # Ensure command is sent immediately
             
-            # Wait for Arduino to process and respond
+            # Wait for Arduino to process the full sequence
             time.sleep(0.5)
             
-            # Read response from Arduino
-            response_received = False
-            timeout = time.time() + 3  # 3 second timeout
+            # Read all responses from Arduino during sequence
+            responses = []
+            timeout = time.time() + 5  # 5 second timeout for full sequence
             
             while time.time() < timeout:
                 if self.arduino.in_waiting > 0:
                     try:
                         response = self.arduino.readline().decode().strip()
                         if response:
-                            print(f"✅ Arduino response: {response}")
-                            response_received = True
-                            break
+                            responses.append(response)
+                            print(f"✅ Arduino: {response}")
                     except Exception as decode_error:
                         print(f"⚠️  Error reading Arduino response: {decode_error}")
                         break
                 time.sleep(0.1)
             
-            if not response_received:
-                print(f"⚠️  No response from Arduino for command '{command}'")
-                # Don't mark as failed - Arduino might be working but not responding
+            if responses:
+                print(f"✅ Dual servo sequence completed with {len(responses)} status updates")
+            else:
+                print(f"⚠️  No responses from Arduino for dual servo sequence")
             
             return True
             
         except serial.SerialException as e:
-            print(f"❌ Serial error sending command to Arduino: {e}")
+            print(f"❌ Serial error sending dual servo command: {e}")
             self.arduino_connected = False
             return False
         except Exception as e:
-            print(f"❌ Error sending command to Arduino: {e}")
+            print(f"❌ Error sending dual servo command: {e}")
             return False
     
     def disconnect_arduino(self):
@@ -468,7 +478,7 @@ def classify():
             # Use threading to send command after delay without blocking response
             import threading
             def delayed_arduino_command():
-                time.sleep(1.0)  # Reduced to 1 second delay for faster operation
+                time.sleep(1.0)  # 1 second delay for results to display first
                 arduino_success = classifier.send_arduino_command(arduino_cmd)
                 # Update the stored result
                 if hasattr(classifier, 'last_prediction') and classifier.last_prediction:
