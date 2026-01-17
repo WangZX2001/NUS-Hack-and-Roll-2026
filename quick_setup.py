@@ -26,35 +26,34 @@ def run_command(command, description):
         return False
 
 def check_requirements():
-    """Check if all requirements are installed."""
+    """Install dependencies from requirements.txt using the active Python."""
     print("📦 Checking Requirements...")
-    
-    required_packages = [
-        'ultralytics', 'opencv-python', 'flask', 'pyserial', 
-        'numpy', 'torch', 'psutil'
-    ]
-    
-    missing = []
-    for package in required_packages:
-        try:
-            __import__(package.replace('-', '_'))
-        except ImportError:
-            missing.append(package)
-    
-    if missing:
-        print(f"⚠️  Missing packages: {', '.join(missing)}")
-        print("Installing missing packages...")
-        
-        for package in missing:
-            if run_command(f"{sys.executable} -m pip install {package}", f"Installing {package}"):
 
-                print(f"✅ {package} installed")
-            else:
-                print(f"❌ Failed to install {package}")
-                return False
-    
-    print("✅ All requirements satisfied")
+    req_file = Path("requirements.txt")
+
+    if not req_file.exists():
+        print("❌ requirements.txt not found")
+        return False
+
+    # Upgrade pip first (safe & recommended)
+    run_command(
+        f"{sys.executable} -m pip install --upgrade pip",
+        "Upgrading pip"
+    )
+
+    # Install from requirements.txt
+    success = run_command(
+        f"{sys.executable} -m pip install -r requirements.txt",
+        "Installing dependencies from requirements.txt"
+    )
+
+    if not success:
+        print("❌ Dependency installation failed")
+        return False
+
+    print("✅ All requirements installed")
     return True
+
 
 def check_model():
     """Check if the trained model exists."""
