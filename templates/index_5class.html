@@ -375,6 +375,10 @@
                     <div id="resultConfidence" class="result-confidence"></div>
                     <div id="resultArduino" class="result-arduino"></div>
                     <div id="resultServo" class="result-servo" style="margin-top: 10px; font-size: 1em; color: #666;"></div>
+                    <div id="manualCommand" class="manual-command" style="margin-top: 15px; padding: 10px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <strong>📋 Manual Arduino Control:</strong><br>
+                        <span id="manualInstructions">Open Arduino Serial Monitor and type the command above</span>
+                    </div>
                 </div>
             </div>
             
@@ -400,6 +404,10 @@
                 
                 <div class="control-group">
                     <h3>🤖 Arduino Control</h3>
+                    <div class="alert" style="background: #e8f4fd; color: #1f4e79; border: 1px solid #bee5eb; margin-bottom: 15px;">
+                        <strong>💡 Alternative:</strong> You can control Arduino manually!<br>
+                        <small>Open Arduino Serial Monitor and type commands (P, M, L, G, T) based on classification results.</small>
+                    </div>
                     <button id="refreshArduino" class="btn">🔄 Refresh Ports</button>
                     <div id="arduinoPortList" class="camera-list">
                         <div class="loading"></div> Loading Arduino ports...
@@ -589,6 +597,11 @@
             classifyBtn.innerHTML = '<div class="loading"></div> Classifying...';
             
             try {
+                // Get current status first
+                const statusResponse = await fetch('/api/status');
+                const status = await statusResponse.json();
+                
+                // Then classify
                 const response = await fetch('/api/classify', {method: 'POST'});
                 const result = await response.json();
                 
@@ -598,16 +611,38 @@
                     resultConfidence.textContent = `Confidence: ${result.confidence}`;
                     resultArduino.textContent = `Arduino Command: ${result.arduino_cmd}`;
                     
-                    // Show servo information
-                    if (result.arduino_sent) {
+                    // Show immediate result
+                    resultDisplay.classList.remove('hidden');
+                    
+                    // Show servo information with delay indication
+                    if (result.arduino_sent === false && status.arduino_connected) {
+                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in 1.5 seconds...`;
+                        resultServo.style.color = '#f39c12';
+                        document.getElementById('manualCommand').style.display = 'none';
+                        
+                        // Update servo status after delay
+                        setTimeout(() => {
+                            resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
+                            resultServo.style.color = '#27ae60';
+                        }, 2000); // Slightly longer than Arduino delay
+                        
+                    } else if (result.arduino_sent) {
                         resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
                         resultServo.style.color = '#27ae60';
+                        document.getElementById('manualCommand').style.display = 'none';
                     } else {
-                        resultServo.textContent = `⚠️ Arduino not connected - servo command not sent`;
-                        resultServo.style.color = '#e74c3c';
+                        resultServo.textContent = `⚠️ Arduino not connected via web interface`;
+                        resultServo.style.color = '#e67e22';
+                        
+                        // Show manual control instructions
+                        const manualCmd = document.getElementById('manualCommand');
+                        const manualInstr = document.getElementById('manualInstructions');
+                        manualCmd.style.display = 'block';
+                        manualInstr.innerHTML = `
+                            Type <strong>"${result.arduino_cmd}"</strong> in Arduino Serial Monitor<br>
+                            <small>This will move servo to ${result.servo_angle}° for ${result.class}</small>
+                        `;
                     }
-                    
-                    resultDisplay.classList.remove('hidden');
                 } else {
                     alert(result.message || 'Classification failed');
                 }

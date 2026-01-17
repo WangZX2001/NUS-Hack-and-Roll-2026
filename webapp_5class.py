@@ -99,8 +99,10 @@ class GarbageClassifier5Class:
     def connect_arduino(self, port=None):
         """Connect to Arduino via serial."""
         try:
+            # Close existing connection
             if self.arduino and self.arduino.is_open:
                 self.arduino.close()
+                time.sleep(1)  # Give port time to close
             
             if port is None:
                 # Auto-detect Arduino port
@@ -110,8 +112,23 @@ class GarbageClassifier5Class:
                     return False
                 port = available_ports[0]['port']
             
-            self.arduino = serial.Serial(port, 9600, timeout=2)
-            time.sleep(2)  # Wait for Arduino to initialize
+            print(f"🔌 Attempting to connect to Arduino on {port}...")
+            
+            # Try to connect with multiple attempts
+            for attempt in range(3):
+                try:
+                    self.arduino = serial.Serial(port, 9600, timeout=3)
+                    break
+                except serial.SerialException as e:
+                    if attempt < 2:
+                        print(f"   Attempt {attempt + 1} failed, retrying...")
+                        time.sleep(2)
+                    else:
+                        raise e
+            
+            # Wait for Arduino to initialize
+            print("   Waiting for Arduino to initialize...")
+            time.sleep(3)  # Increased wait time
             
             # Test connection
             if self.arduino.is_open:
@@ -119,22 +136,52 @@ class GarbageClassifier5Class:
                 self.arduino_connected = True
                 print(f"✅ Arduino connected on {port}")
                 
-                # Read any initial messages from Arduino
+                # Clear any initial messages and send test
                 try:
+                    # Clear input buffer
+                    self.arduino.reset_input_buffer()
+                    
+                    # Send a test command to verify communication
+                    print("   Testing communication...")
+                    self.arduino.write(b'P')  # Test with Paper command
+                    time.sleep(1)
+                    
+                    # Read any responses
+                    responses = []
                     while self.arduino.in_waiting > 0:
-                        message = self.arduino.readline().decode().strip()
-                        if message:
-                            print(f"Arduino: {message}")
-                except:
-                    pass
+                        try:
+                            message = self.arduino.readline().decode().strip()
+                            if message:
+                                responses.append(message)
+                                print(f"   Arduino: {message}")
+                        except:
+                            break
+                    
+                    if responses:
+                        print("✅ Arduino communication test successful!")
+                    else:
+                        print("⚠️  No response from Arduino, but connection established")
+                    
+                except Exception as comm_error:
+                    print(f"⚠️  Communication test failed: {comm_error}")
+                    # Don't fail connection for communication test failure
                 
                 return True
             else:
                 print(f"❌ Failed to open Arduino port {port}")
                 return False
                 
-        except Exception as e:
+        except serial.SerialException as e:
             print(f"❌ Arduino connection error: {e}")
+            if "Access is denied" in str(e) or "PermissionError" in str(e):
+                print("   💡 This usually means:")
+                print("   - Arduino IDE Serial Monitor is still open")
+                print("   - Another program is using the port")
+                print("   - Try closing Arduino IDE completely and wait 10 seconds")
+            self.arduino_connected = False
+            return False
+        except Exception as e:
+            print(f"❌ Unexpected Arduino error: {e}")
             self.arduino_connected = False
             return False
     
@@ -145,20 +192,47 @@ class GarbageClassifier5Class:
             return False
         
         try:
+            print(f"📡 Sending command '{command}' to Arduino...")
+            
+            # Clear any pending input
+            self.arduino.reset_input_buffer()
+            
+            # Send command
             self.arduino.write(command.encode())
-            print(f"📡 Sent command '{command}' to Arduino")
+            self.arduino.flush()  # Ensure command is sent immediately
+            
+            # Wait for Arduino to process and respond
+            time.sleep(0.5)
             
             # Read response from Arduino
-            time.sleep(0.1)  # Give Arduino time to respond
-            if self.arduino.in_waiting > 0:
-                response = self.arduino.readline().decode().strip()
-                if response:
-                    print(f"Arduino response: {response}")
+            response_received = False
+            timeout = time.time() + 3  # 3 second timeout
+            
+            while time.time() < timeout:
+                if self.arduino.in_waiting > 0:
+                    try:
+                        response = self.arduino.readline().decode().strip()
+                        if response:
+                            print(f"✅ Arduino response: {response}")
+                            response_received = True
+                            break
+                    except Exception as decode_error:
+                        print(f"⚠️  Error reading Arduino response: {decode_error}")
+                        break
+                time.sleep(0.1)
+            
+            if not response_received:
+                print(f"⚠️  No response from Arduino for command '{command}'")
+                # Don't mark as failed - Arduino might be working but not responding
             
             return True
+            
+        except serial.SerialException as e:
+            print(f"❌ Serial error sending command to Arduino: {e}")
+            self.arduino_connected = False
+            return False
         except Exception as e:
             print(f"❌ Error sending command to Arduino: {e}")
-            self.arduino_connected = False
             return False
     
     def disconnect_arduino(self):
@@ -365,7 +439,7 @@ def stop_camera():
 
 @app.route('/api/classify', methods=['POST'])
 def classify():
-    """Classify current frame and send Arduino command."""
+    """Classify current frame and optionally send Arduino command with delay."""
     frame = classifier.get_frame()
     if frame is None:
         return jsonify({'error': 'No camera frame available'})
@@ -373,27 +447,43 @@ def classify():
     pred_class, confidence = classifier.classify_frame(frame)
     
     if pred_class and confidence > classifier.confidence_threshold:
-        # Send command to Arduino
         arduino_cmd = classifier.cmd_map.get(pred_class, 'T')
-        arduino_success = classifier.send_arduino_command(arduino_cmd)
         
+        # Create result immediately (before Arduino command)
         result = {
             'success': True,
             'class': pred_class,
             'confidence': round(confidence, 3),
             'arduino_cmd': arduino_cmd,
-            'arduino_sent': arduino_success,
+            'arduino_sent': False,  # Will be updated after delay
             'servo_angle': classifier.servo_angles.get(pred_class, 90),
             'color': classifier.colors.get(pred_class, '#FFFFFF')
         }
+        
+        # Store result for status updates
         classifier.last_prediction = result
+        
+        # Send Arduino command after a short delay (if connected)
+        if classifier.arduino_connected:
+            # Use threading to send command after delay without blocking response
+            import threading
+            def delayed_arduino_command():
+                time.sleep(1.5)  # 1.5 second delay to show result first
+                arduino_success = classifier.send_arduino_command(arduino_cmd)
+                # Update the stored result
+                if hasattr(classifier, 'last_prediction') and classifier.last_prediction:
+                    classifier.last_prediction['arduino_sent'] = arduino_success
+            
+            # Start delayed command in background
+            threading.Thread(target=delayed_arduino_command, daemon=True).start()
+        
+        return jsonify(result)
     else:
         result = {
             'success': False,
             'message': f'Low confidence: {confidence:.3f}' if pred_class else 'No detection'
         }
-    
-    return jsonify(result)
+        return jsonify(result)
 
 @app.route('/api/status')
 def get_status():
