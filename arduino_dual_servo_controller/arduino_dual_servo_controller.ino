@@ -56,7 +56,10 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   
   // Initialize servo positions
-  positioningServo.write(90);    // Center position
+  Serial.println("Initializing servos...");
+  Serial.println("  Setting positioning servo to 0° (start position)");
+  positioningServo.write(0);    // Start at 0 degrees instead of center
+  Serial.println("  Setting flap servo to 0° (closed)");
   dropFlapServo.write(FLAP_CLOSED);  // Flap closed
   delay(1000);
   
@@ -69,7 +72,7 @@ void setup() {
   Serial.println("Servo 1 (Pin 9): Positioning arm");
   Serial.println("Servo 2 (Pin 10): Drop flap (0° to 180°)");
   Serial.println("Commands: P(Paper), M(Metal), L(Plastic), G(Glass), T(Trash)");
-  Serial.println("Special: R(Reset), F(Test Flap), S(Test Positioning Servo)");
+  Serial.println("Special: R(Reset), F(Test Flap), S(Test Positioning), D(Detach/Reattach)");
   Serial.println("Sequence: Position → Drop → Return");
 }
 
@@ -113,6 +116,10 @@ void loop() {
         
       case 'S':  // Test positioning Servo (Servo 1)
         testPositioningServo();
+        break;
+        
+      case 'D':  // Detach and reattach positioning servo
+        detachReattachServo();
         break;
         
       default:
@@ -273,6 +280,18 @@ void testPositioningServo() {
   
   digitalWrite(LED_PIN, HIGH);
   
+  // First, try to "unstick" the servo with rapid movements
+  Serial.println("Attempting to unstick servo with rapid movements...");
+  for (int i = 0; i < 5; i++) {
+    positioningServo.write(0);
+    delay(200);
+    positioningServo.write(180);
+    delay(200);
+  }
+  
+  Serial.println("Now testing each position slowly...");
+  delay(1000);
+  
   // Test each position
   int positions[] = {0, 45, 90, 135, 180};
   String labels[] = {"Paper (0°)", "Metal (45°)", "Plastic (90°)", "Glass (135°)", "Trash (180°)"};
@@ -281,7 +300,7 @@ void testPositioningServo() {
     Serial.print("Moving to: ");
     Serial.println(labels[i]);
     positioningServo.write(positions[i]);
-    delay(1500);  // Hold position for 1.5 seconds
+    delay(2000);  // Hold position for 2 seconds
   }
   
   // Return to center
@@ -294,10 +313,55 @@ void testPositioningServo() {
   Serial.println("========================================");
   Serial.println("POSITIONING SERVO TEST COMPLETE!");
   Serial.println("Did Servo 1 (Pin 9) move?");
-  Serial.println("If NO, check:");
-  Serial.println("1. Servo is connected to Pin 9");
-  Serial.println("2. Servo has power (5V and GND)");
-  Serial.println("3. Servo signal wire is in Pin 9");
-  Serial.println("4. Try swapping servos to test if hardware works");
+  Serial.println("If STUCK at 180°, try:");
+  Serial.println("1. Manually move servo arm to center position");
+  Serial.println("2. Check if servo is mechanically jammed");
+  Serial.println("3. Detach and re-attach servo");
+  Serial.println("4. Try command 'D' to detach/reattach servo");
+  Serial.println("========================================");
+}
+
+
+void detachReattachServo() {
+  Serial.println("========================================");
+  Serial.println("DETACHING AND REATTACHING SERVO 1");
+  Serial.println("========================================");
+  
+  digitalWrite(LED_PIN, HIGH);
+  
+  Serial.println("Step 1: Detaching positioning servo from Pin 9...");
+  positioningServo.detach();
+  delay(1000);
+  Serial.println("   Servo detached - you can now manually move it");
+  
+  Serial.println("\nStep 2: Waiting 3 seconds...");
+  Serial.println("   MANUALLY move the servo arm to center position NOW!");
+  delay(3000);
+  
+  Serial.println("\nStep 3: Re-attaching servo to Pin 9...");
+  positioningServo.attach(9);
+  delay(500);
+  
+  Serial.println("Step 4: Setting to center position (90°)...");
+  positioningServo.write(90);
+  delay(1000);
+  
+  Serial.println("Step 5: Testing movement to 0°...");
+  positioningServo.write(0);
+  delay(1500);
+  
+  Serial.println("Step 6: Testing movement to 180°...");
+  positioningServo.write(180);
+  delay(1500);
+  
+  Serial.println("Step 7: Returning to center (90°)...");
+  positioningServo.write(90);
+  delay(1000);
+  
+  digitalWrite(LED_PIN, LOW);
+  
+  Serial.println("========================================");
+  Serial.println("DETACH/REATTACH COMPLETE!");
+  Serial.println("Did the servo move after reattaching?");
   Serial.println("========================================");
 }
