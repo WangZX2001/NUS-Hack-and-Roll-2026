@@ -405,9 +405,21 @@
                 <div class="control-group">
                     <h3>🤖 Arduino Control</h3>
                     <div class="alert" style="background: #e8f4fd; color: #1f4e79; border: 1px solid #bee5eb; margin-bottom: 15px;">
-                        <strong>💡 Alternative:</strong> You can control Arduino manually!<br>
-                        <small>Open Arduino Serial Monitor and type commands (P, M, L, G, T) based on classification results.</small>
+                        <strong>🚀 Auto-Connection Enabled!</strong><br>
+                        <small>Arduino will automatically connect when the web app starts and reconnect if disconnected.</small>
                     </div>
+                    
+                    <div class="checkbox-container" style="margin-bottom: 15px;">
+                        <label>
+                            <input type="checkbox" id="autoConnectToggle" checked> 
+                            🔄 Auto-connect Arduino on startup
+                        </label>
+                        <small style="color: #666; margin-top: 5px; display: block;">
+                            💡 Automatically finds and connects to Arduino when app starts
+                        </small>
+                    </div>
+                    
+                    <button id="forceReconnect" class="btn" style="background: #17a2b8; margin-bottom: 10px;">🔄 Force Reconnect</button>
                     <button id="refreshArduino" class="btn">🔄 Refresh Ports</button>
                     <div id="arduinoPortList" class="camera-list">
                         <div class="loading"></div> Loading Arduino ports...
@@ -486,6 +498,8 @@
         const disconnectArduino = document.getElementById('disconnectArduino');
         const servoTestSection = document.getElementById('servoTestSection');
         const resultServo = document.getElementById('resultServo');
+        const autoConnectToggle = document.getElementById('autoConnectToggle');
+        const forceReconnect = document.getElementById('forceReconnect');
         
         let selectedArduinoPort = null;
         
@@ -792,7 +806,7 @@
                     <div><span class="status-indicator ${status.camera_running ? 'green' : 'red'}"></span>Camera: ${status.camera_running ? `Running (${status.camera_index})` : 'Not started'}</div>
                     <div><span class="status-indicator ${status.num_classes === 5 ? 'green' : 'yellow'}"></span>Classes: ${status.num_classes} (${status.num_classes === 5 ? 'with glass' : 'glass grouped'})</div>
                     <div><span class="status-indicator ${status.detection_model_loaded ? (status.detection_enabled ? 'green' : 'yellow') : 'red'}"></span>Detection: ${status.detection_model_loaded ? (status.detection_enabled ? 'Enabled' : 'Disabled') : 'Not available'}</div>
-                    <div><span class="status-indicator ${status.arduino_connected ? 'green' : 'red'}"></span>Arduino: ${status.arduino_connected ? `Connected (${status.arduino_port})` : 'Not connected'}</div>
+                    <div><span class="status-indicator ${status.arduino_connected ? 'green' : (status.auto_connect_enabled ? 'yellow' : 'red')}"></span>Arduino: ${status.arduino_connected ? `Connected (${status.arduino_port})` : (status.auto_connect_enabled ? 'Auto-connecting...' : 'Not connected')}</div>
                 `;
                 
                 // Update detection toggle state
@@ -801,9 +815,19 @@
                     detectionToggle.disabled = !status.detection_model_loaded;
                 }
                 
+                // Update auto-connect toggle state
+                if (autoConnectToggle) {
+                    autoConnectToggle.checked = status.auto_connect_enabled;
+                }
+                
                 // Update Arduino controls
                 disconnectArduino.disabled = !status.arduino_connected;
                 servoTestSection.style.display = status.arduino_connected ? 'block' : 'none';
+                
+                // Show retry information if applicable
+                if (status.connection_retry_count > 0 && !status.arduino_connected) {
+                    console.log(`Arduino reconnection attempts: ${status.connection_retry_count}/${status.max_retry_attempts}`);
+                }
                 
             } catch (error) {
                 console.error('Error updating status:', error);
@@ -848,6 +872,64 @@
             }
         }
         
+        // Toggle auto-connect Arduino
+        async function toggleAutoConnect() {
+            const enabled = autoConnectToggle.checked;
+            
+            try {
+                const response = await fetch('/api/arduino/auto_connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: enabled})
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.connection_attempted) {
+                        if (result.connected) {
+                            console.log('Auto-connect enabled and Arduino connected successfully');
+                        } else {
+                            console.log('Auto-connect enabled but connection failed');
+                        }
+                    }
+                } else {
+                    alert('Failed to toggle auto-connect');
+                    autoConnectToggle.checked = !enabled; // Revert checkbox
+                }
+            } catch (error) {
+                console.error('Error toggling auto-connect:', error);
+                autoConnectToggle.checked = !enabled; // Revert checkbox
+            }
+        }
+        
+        // Force reconnect Arduino
+        async function forceReconnectArduino() {
+            try {
+                forceReconnect.disabled = true;
+                forceReconnect.innerHTML = '<div class="loading"></div> Reconnecting...';
+                
+                const response = await fetch('/api/arduino/reconnect', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Arduino reconnected on ${result.port}`);
+                } else {
+                    alert('Failed to reconnect Arduino');
+                }
+                
+                forceReconnect.innerHTML = '🔄 Force Reconnect';
+                forceReconnect.disabled = false;
+            } catch (error) {
+                console.error('Error force reconnecting Arduino:', error);
+                forceReconnect.innerHTML = '🔄 Force Reconnect';
+                forceReconnect.disabled = false;
+            }
+        }
+        
         // Event listeners
         refreshCameras.addEventListener('click', loadCameras);
         startCamera.addEventListener('click', startCameraFeed);
@@ -860,6 +942,8 @@
         refreshArduino.addEventListener('click', loadArduinoPorts);
         connectArduino.addEventListener('click', connectToArduino);
         disconnectArduino.addEventListener('click', disconnectFromArduino);
+        autoConnectToggle.addEventListener('change', toggleAutoConnect);
+        forceReconnect.addEventListener('click', forceReconnectArduino);
         
         // Servo test buttons
         document.addEventListener('click', function(e) {

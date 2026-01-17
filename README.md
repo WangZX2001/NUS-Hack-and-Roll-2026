@@ -1,6 +1,6 @@
 # 🗑️ AI Garbage Classification System
 
-An AI-powered vision system that automatically classifies and sorts waste into **5 material types** using a camera and a trained deep learning model. The system runs through a web interface and can send commands to an **Arduino** for physical sorting hardware.
+An AI-powered vision system that automatically classifies and sorts waste into **5 material types** using a camera and a trained deep learning model. The system runs through a web interface and **automatically connects to Arduino** for physical sorting hardware.
 
 Built for **Hacker-and-Roll 2026**.
 
@@ -9,8 +9,14 @@ Built for **Hacker-and-Roll 2026**.
 For demos, everything can be set up with **one command**:
 
 ```bash
-python3 quick_setup.py
+python3 start_auto_arduino.py
 ```
+
+This will:
+- Install all dependencies
+- Kill any existing processes
+- Start the webapp with **automatic Arduino connection**
+- Open web interface at http://localhost:5001
 
 ## 🚀 What this project does
 
@@ -22,8 +28,32 @@ python3 quick_setup.py
    * 🍶 `glass`
    * 🗑️ `trash`
 3. **Real-time Processing**: Live camera feed with instant classification
-4. **Arduino Integration**: Automatically controls servo motor to sort waste into bins
+4. **🤖 Automatic Arduino Integration**: Automatically finds, connects, and controls Arduino servo motors
 5. **High Accuracy**: 97.5% accuracy with proper glass separation
+
+## 🤖 NEW: Automatic Arduino Connection
+
+The system now **automatically connects to Arduino** when you start the webapp:
+
+### ✨ Auto-Connection Features
+- **🔍 Auto-Detection**: Finds Arduino ports automatically on startup
+- **🔄 Auto-Reconnect**: Reconnects if Arduino gets disconnected
+- **🚀 Zero Configuration**: No manual port selection needed
+- **🛡️ Process Cleanup**: Kills blocking processes automatically
+- **⚡ Instant Sorting**: Arduino commands sent immediately after classification
+
+### 🎯 How It Works
+1. **Startup**: Webapp automatically scans for Arduino ports
+2. **Connection**: Connects to first available Arduino
+3. **Classification**: When you classify material, Arduino command is sent automatically
+4. **Sorting**: Dual servo sequence executes (position → drop → close → return)
+5. **Monitoring**: Connection status monitored and maintained
+
+### 🔧 Manual Override Available
+- Toggle auto-connection on/off in web interface
+- Force reconnect button for troubleshooting
+- Manual port selection still available
+- Servo test buttons for hardware verification
 
 ## 🌐 Web Interface
 
@@ -86,13 +116,18 @@ Hacker-and-Roll-2026/
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Option 1: Automatic Setup (Recommended)
 ```bash
-python3 -m pip install -r requirements.txt
+python3 start_auto_arduino.py
 ```
+This handles everything automatically including Arduino connection.
 
-### 2. Run the Web Application
+### Option 2: Manual Setup
 ```bash
+# Install dependencies
+python3 -m pip install -r requirements.txt
+
+# Start webapp (with auto Arduino connection)
 python3 webapp_5class.py
 ```
 
@@ -100,13 +135,12 @@ python3 webapp_5class.py
 Navigate to: **http://localhost:5001**
 
 ### 4. Use the Interface
-1. **Select Camera**: Choose your external webcam
-2. **Connect Arduino**: Select Arduino port and connect (see [Arduino Setup Guide](ARDUINO_SETUP.md))
-3. **Start Camera**: Begin live video feed (detection boxes disabled by default for performance)
-4. **Optional Detection**: Enable bounding boxes if desired (may reduce video smoothness)
-5. **Classify**: Point camera at waste item and click "Classify Material"
-6. **Automatic Sorting**: Servo motor automatically moves to correct bin position
-7. **View Results**: See classification, confidence, Arduino command, and servo angle
+1. **Arduino**: Should auto-connect on startup (check status indicator)
+2. **Select Camera**: Choose your external webcam
+3. **Start Camera**: Begin live video feed
+4. **Classify**: Point camera at waste item and click "Classify Material"
+5. **🤖 Automatic Sorting**: Arduino dual servo sequence executes automatically!
+6. **View Results**: See classification, confidence, and servo status
 
 ## 🎯 Classification System
 
@@ -127,35 +161,46 @@ Navigate to: **http://localhost:5001**
 
 ## 🔌 Arduino Integration
 
-The system automatically controls a servo motor to sort waste into physical bins.
+The system **automatically connects to Arduino** and controls dual servo motors for physical waste sorting.
+
+### 🤖 Automatic Connection Process
+1. **Startup Scan**: Webapp scans all USB ports for Arduino devices
+2. **Auto-Connect**: Connects to first available Arduino automatically
+3. **Process Cleanup**: Kills any blocking processes that might interfere
+4. **Connection Test**: Sends test command to verify communication
+5. **Status Monitoring**: Continuously monitors connection health
+6. **Auto-Reconnect**: Reconnects automatically if connection is lost
 
 ### Hardware Setup
-- **Arduino Uno** with servo motor on pin 9
-- **5 bins** positioned at different servo angles
+- **Arduino Uno** with dual servo setup:
+  - **Servo 1 (Pin 9)**: Positioning arm (swings to correct bin)
+  - **Servo 2 (Pin 10)**: Drop flap (opens to release waste)
+- **5 bins** positioned at different angles
 - **USB connection** to computer running the webapp
+
+### Dual Servo Sequence
+When material is classified, Arduino executes this sequence automatically:
+1. **Position**: Servo 1 moves to correct bin angle
+2. **Drop**: Servo 2 opens flap to release waste
+3. **Close**: Servo 2 closes flap
+4. **Return**: Servo 1 returns to center position
 
 ### Servo Positions & Commands
 
-| Material | Arduino Command | Servo Angle | Bin Position |
-|----------|----------------|-------------|--------------|
+| Material | Arduino Command | Servo 1 Angle | Bin Position |
+|----------|----------------|---------------|--------------|
 | 📄 Paper | `P` | 0° | Far Left |
 | 🔩 Metal | `M` | 45° | Left |
 | 🥤 Plastic | `L` | 90° | Center |
 | 🍶 Glass | `G` | 135° | Right |
 | 🗑️ Trash | `T` | 180° | Far Right |
 
-### Setup Instructions
-See detailed [Arduino Setup Guide](ARDUINO_SETUP.md) for:
-- Hardware wiring diagrams
-- Arduino code installation
-- Troubleshooting tips
-- Physical bin positioning
-
-### Web Interface Features
-- **Port Detection**: Automatically finds connected Arduino
-- **Connection Status**: Real-time Arduino connection monitoring
-- **Servo Testing**: Manual servo position testing buttons
-- **Automatic Control**: Servo moves automatically after classification
+### Web Interface Arduino Features
+- **🟢 Auto-Connection Status**: Green indicator when connected
+- **🔄 Force Reconnect**: Manual reconnection button
+- **🎯 Servo Testing**: Test each bin position individually
+- **⚙️ Auto-Connect Toggle**: Enable/disable automatic connection
+- **📊 Connection Monitoring**: Real-time status and retry information
 
 ## 🛠 Dataset & Training
 

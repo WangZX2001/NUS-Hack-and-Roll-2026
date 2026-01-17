@@ -10,3 +10,4 @@ ultralytics>=8.0.0
 opencv-python>=4.5.0
 pyserial>=3.5
 flask>=2.0.0
+psutil>=5.8.0

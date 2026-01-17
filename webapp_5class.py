@@ -37,6 +37,9 @@ class GarbageClassifier5Class:
         self.arduino = None
         self.arduino_port = None
         self.arduino_connected = False
+        self.auto_connect_arduino = True  # Enable automatic Arduino connection
+        self.connection_retry_count = 0
+        self.max_retry_attempts = 3
         
         # 5-class system with separate glass
         self.classes = ["paper", "metal", "plastic", "glass", "trash"]
@@ -76,7 +79,10 @@ class GarbageClassifier5Class:
         # Load models
         self.load_model()
         self.load_detection_model()
-        self.connect_arduino()
+        
+        # Auto-connect to Arduino on startup
+        if self.auto_connect_arduino:
+            self.auto_connect_arduino_on_startup()
     
     def load_detection_model(self):
         """Load YOLO detection model for drawing bounding boxes."""
@@ -91,6 +97,125 @@ class GarbageClassifier5Class:
             print("   Continuing without bounding boxes...")
             self.detection_enabled = False
             return False
+    
+    def auto_connect_arduino_on_startup(self):
+        """Automatically connect to Arduino on startup with retry logic."""
+        print("🤖 Auto-connecting to Arduino...")
+        
+        # First, try to kill any blocking processes
+        self.kill_blocking_processes()
+        
+        # Get available Arduino ports
+        available_ports = self.get_available_arduino_ports()
+        
+        if not available_ports:
+            print("⚠️  No Arduino ports detected on startup")
+            print("   💡 Make sure Arduino is connected and try refreshing in web interface")
+            return False
+        
+        # Try each available port
+        for port_info in available_ports:
+            port = port_info['port']
+            print(f"🔌 Trying auto-connection to {port}...")
+            
+            if self.connect_arduino(port):
+                print(f"✅ Auto-connected to Arduino on {port}")
+                return True
+            else:
+                print(f"❌ Auto-connection failed for {port}")
+        
+        print("⚠️  Auto-connection failed for all ports")
+        print("   💡 You can manually connect via the web interface")
+        return False
+    
+    def kill_blocking_processes(self):
+        """Kill processes that might be blocking Arduino connection."""
+        try:
+            import psutil
+            current_pid = psutil.Process().pid
+            killed_count = 0
+            
+            print("🔍 Checking for blocking processes...")
+            
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    if proc.info['pid'] == current_pid:
+                        continue  # Don't kill ourselves
+                        
+                    if proc.info['name'] and 'python' in proc.info['name'].lower():
+                        cmdline = proc.info.get('cmdline', [])
+                        if cmdline and any('webapp' in str(cmd).lower() or 'arduino' in str(cmd).lower() for cmd in cmdline):
+                            # Only kill if it's a different webapp instance
+                            if any('webapp_5class.py' in str(cmd) for cmd in cmdline):
+                                print(f"   Terminating old webapp instance PID {proc.info['pid']}")
+                                try:
+                                    proc.terminate()
+                                    proc.wait(timeout=2)
+                                    killed_count += 1
+                                except:
+                                    try:
+                                        proc.kill()
+                                        killed_count += 1
+                                    except:
+                                        pass
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            
+            if killed_count > 0:
+                print(f"✅ Terminated {killed_count} blocking processes")
+                time.sleep(2)  # Wait for cleanup
+            else:
+                print("✅ No blocking processes found")
+                
+        except ImportError:
+            print("⚠️  psutil not available, skipping process cleanup")
+        except Exception as e:
+            print(f"⚠️  Error during process cleanup: {e}")
+    
+    def ensure_arduino_connection(self):
+        """Ensure Arduino connection is maintained, reconnect if needed."""
+        if not self.arduino_connected:
+            return False
+            
+        try:
+            # Test if connection is still alive
+            if self.arduino and self.arduino.is_open:
+                # Try to send a simple test
+                self.arduino.reset_input_buffer()
+                return True
+            else:
+                print("⚠️  Arduino connection lost, attempting reconnect...")
+                return self.reconnect_arduino()
+        except Exception as e:
+            print(f"⚠️  Arduino connection error: {e}, attempting reconnect...")
+            return self.reconnect_arduino()
+    
+    def reconnect_arduino(self):
+        """Attempt to reconnect to Arduino."""
+        if self.connection_retry_count >= self.max_retry_attempts:
+            print(f"❌ Max reconnection attempts ({self.max_retry_attempts}) reached")
+            return False
+            
+        self.connection_retry_count += 1
+        print(f"🔄 Reconnection attempt {self.connection_retry_count}/{self.max_retry_attempts}")
+        
+        # Close existing connection
+        if self.arduino:
+            try:
+                self.arduino.close()
+            except:
+                pass
+            time.sleep(1)
+        
+        # Try to reconnect to the same port
+        if self.arduino_port:
+            success = self.connect_arduino(self.arduino_port)
+            if success:
+                self.connection_retry_count = 0  # Reset counter on success
+                return True
+        
+        # If that fails, try auto-detection again
+        return self.auto_connect_arduino_on_startup()
     
     def get_available_arduino_ports(self):
         """Get list of available serial ports for Arduino."""
@@ -478,6 +603,16 @@ def classify():
         # Store result for status updates
         classifier.last_prediction = result
         
+        # Ensure Arduino connection before sending command
+        if classifier.auto_connect_arduino:
+            # Try to ensure connection is working
+            if not classifier.arduino_connected:
+                print("🔄 Arduino not connected, attempting auto-reconnect...")
+                classifier.auto_connect_arduino_on_startup()
+            else:
+                # Test existing connection
+                classifier.ensure_arduino_connection()
+        
         # Send Arduino command after a shorter delay (if connected)
         if classifier.arduino_connected:
             # Use threading to send command after delay without blocking response
@@ -500,6 +635,42 @@ def classify():
         }
         return jsonify(result)
 
+@app.route('/api/arduino/auto_connect', methods=['POST'])
+def toggle_auto_connect():
+    """Toggle automatic Arduino connection."""
+    data = request.get_json()
+    enabled = data.get('enabled', True)
+    
+    classifier.auto_connect_arduino = enabled
+    
+    if enabled and not classifier.arduino_connected:
+        # Try to auto-connect now
+        success = classifier.auto_connect_arduino_on_startup()
+        return jsonify({
+            'success': True,
+            'auto_connect_enabled': classifier.auto_connect_arduino,
+            'connection_attempted': True,
+            'connected': classifier.arduino_connected
+        })
+    
+    return jsonify({
+        'success': True,
+        'auto_connect_enabled': classifier.auto_connect_arduino,
+        'connection_attempted': False,
+        'connected': classifier.arduino_connected
+    })
+
+@app.route('/api/arduino/reconnect', methods=['POST'])
+def force_reconnect_arduino():
+    """Force Arduino reconnection."""
+    success = classifier.reconnect_arduino()
+    return jsonify({
+        'success': success,
+        'connected': classifier.arduino_connected,
+        'port': classifier.arduino_port if success else None,
+        'message': 'Reconnected successfully' if success else 'Reconnection failed'
+    })
+
 @app.route('/api/status')
 def get_status():
     """Get current system status."""
@@ -511,6 +682,9 @@ def get_status():
         'detection_model_loaded': classifier.detection_model is not None,
         'arduino_connected': classifier.arduino_connected,
         'arduino_port': classifier.arduino_port,
+        'auto_connect_enabled': classifier.auto_connect_arduino,
+        'connection_retry_count': classifier.connection_retry_count,
+        'max_retry_attempts': classifier.max_retry_attempts,
         'last_prediction': classifier.last_prediction,
         'confidence_threshold': classifier.confidence_threshold,
         'num_classes': len(classifier.classes),
@@ -614,7 +788,8 @@ def video_feed():
 if __name__ == '__main__':
     print("🌐 Starting 5-Class Garbage Classification Web App...")
     print("📱 Open your browser and go to: http://localhost:5001")
-    print("git 🗂️  Classes: paper, metal, plastic, glass, trash")
+    print("🗂️  Classes: paper, metal, plastic, glass, trash")
+    print("🤖 Arduino auto-connection: ENABLED")
     print("🛑 Press Ctrl+C to stop")
     
     try:
@@ -622,3 +797,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\n👋 Shutting down...")
         classifier.stop_camera()
+        classifier.disconnect_arduino()
