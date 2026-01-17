@@ -616,15 +616,29 @@
                     
                     // Show servo information with delay indication
                     if (result.arduino_sent === false && status.arduino_connected) {
-                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in 1.5 seconds...`;
+                        // Start countdown
+                        let countdown = 3;
+                        resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} seconds...`;
                         resultServo.style.color = '#f39c12';
                         document.getElementById('manualCommand').style.display = 'none';
                         
-                        // Update servo status after delay
+                        // Update countdown every second
+                        const countdownInterval = setInterval(() => {
+                            countdown--;
+                            if (countdown > 0) {
+                                resultServo.textContent = `⏳ Servo will move to ${result.servo_angle}° in ${countdown} seconds...`;
+                            } else {
+                                resultServo.textContent = `🚀 Servo moving to ${result.servo_angle}°...`;
+                                resultServo.style.color = '#e67e22';
+                                clearInterval(countdownInterval);
+                            }
+                        }, 1000);
+                        
+                        // Final confirmation after movement
                         setTimeout(() => {
                             resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;
                             resultServo.style.color = '#27ae60';
-                        }, 2000); // Slightly longer than Arduino delay
+                        }, 3500); // 3.5 seconds total
                         
                     } else if (result.arduino_sent) {
                         resultServo.textContent = `🎯 Servo moved to ${result.servo_angle}° ✅`;

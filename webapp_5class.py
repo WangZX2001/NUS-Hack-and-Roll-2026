@@ -463,12 +463,12 @@ def classify():
         # Store result for status updates
         classifier.last_prediction = result
         
-        # Send Arduino command after a short delay (if connected)
+        # Send Arduino command after a longer delay (if connected)
         if classifier.arduino_connected:
             # Use threading to send command after delay without blocking response
             import threading
             def delayed_arduino_command():
-                time.sleep(1.5)  # 1.5 second delay to show result first
+                time.sleep(3.0)  # Increased to 3 seconds delay to ensure results show first
                 arduino_success = classifier.send_arduino_command(arduino_cmd)
                 # Update the stored result
                 if hasattr(classifier, 'last_prediction') and classifier.last_prediction:

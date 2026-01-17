@@ -1,6 +1,6 @@
 /*
- * Arduino Servo Controller for Garbage Classification System - FAST VERSION
- * Controls servo motor to sort waste into different bins with faster movement
+ * Arduino Servo Controller - ULTRA FAST VERSION
+ * Fastest possible servo movement for garbage classification
  * 
  * Hardware Setup:
  * - Servo motor connected to pin 9
@@ -41,19 +41,16 @@ void setup() {
   
   // Move servo to center position on startup
   sortingServo.write(90);
-  delay(1000);
+  delay(500);  // Reduced startup delay
   
-  // Blink LED to indicate ready
-  for(int i = 0; i < 3; i++) {
-    digitalWrite(LED_PIN, HIGH);
-    delay(200);
-    digitalWrite(LED_PIN, LOW);
-    delay(200);
-  }
+  // Quick LED blink to indicate ready
+  digitalWrite(LED_PIN, HIGH);
+  delay(100);
+  digitalWrite(LED_PIN, LOW);
   
-  Serial.println("Arduino Fast Servo Controller Ready!");
+  Serial.println("Arduino ULTRA FAST Servo Controller Ready!");
   Serial.println("Commands: P(Paper), M(Metal), L(Plastic), G(Glass), T(Trash)");
-  Serial.println("Fast movement mode enabled!");
+  Serial.println("Ultra fast movement mode - minimal delays!");
 }
 
 void loop() {
@@ -64,69 +61,53 @@ void loop() {
     // Convert to uppercase for consistency
     command = toupper(command);
     
-    // Process command and move servo
+    // Process command and move servo IMMEDIATELY
     switch(command) {
       case 'P':  // Paper
-        moveServoToFast(PAPER_ANGLE, "Paper");
+        moveServoUltraFast(PAPER_ANGLE, "Paper");
         break;
         
       case 'M':  // Metal
-        moveServoToFast(METAL_ANGLE, "Metal");
+        moveServoUltraFast(METAL_ANGLE, "Metal");
         break;
         
       case 'L':  // Plastic (L for pLastic to avoid confusion with Paper)
-        moveServoToFast(PLASTIC_ANGLE, "Plastic");
+        moveServoUltraFast(PLASTIC_ANGLE, "Plastic");
         break;
         
       case 'G':  // Glass
-        moveServoToFast(GLASS_ANGLE, "Glass");
+        moveServoUltraFast(GLASS_ANGLE, "Glass");
         break;
         
       case 'T':  // Trash
-        moveServoToFast(TRASH_ANGLE, "Trash");
+        moveServoUltraFast(TRASH_ANGLE, "Trash");
         break;
         
       default:
         Serial.print("Unknown command: ");
         Serial.println(command);
-        blinkError();
+        // No error blink to save time
         break;
     }
   }
 }
 
-void moveServoToFast(int angle, String material) {
-  // Indicate activity
+void moveServoUltraFast(int angle, String material) {
+  // LED on immediately
   digitalWrite(LED_PIN, HIGH);
   
-  // Send immediate confirmation that command was received
-  Serial.print("Moving servo to ");
-  Serial.print(angle);
-  Serial.print("° for ");
-  Serial.println(material);
-  
-  // Move servo directly to target angle (ULTRA FAST movement)
+  // Move servo IMMEDIATELY - no delays
   sortingServo.write(angle);
   
-  // Minimal delay - servo should move as fast as possible
-  delay(150);  // Reduced from 300ms to 150ms - even faster!
-  
-  // Confirm movement completion
+  // Send confirmation immediately
   Serial.print("Servo moved to ");
   Serial.print(angle);
   Serial.print("° for ");
   Serial.println(material);
   
-  // Turn off LED
+  // Minimal delay just to ensure servo starts moving
+  delay(100);  // Absolute minimum delay
+  
+  // LED off
   digitalWrite(LED_PIN, LOW);
-}
-
-void blinkError() {
-  // Blink LED rapidly to indicate error
-  for(int i = 0; i < 5; i++) {
-    digitalWrite(LED_PIN, HIGH);
-    delay(100);
-    digitalWrite(LED_PIN, LOW);
-    delay(100);
-  }
 }
