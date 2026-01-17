@@ -58,13 +58,13 @@ class GarbageClassifier5Class:
             "trash": "T"
         }
         
-        # Servo angles for each material (for reference)
+        # Servo angles for each material (for reference) - LIMITED RANGE 45° to 135°
         self.servo_angles = {
-            "paper": 0,     # Paper bin
-            "metal": 45,    # Metal bin
-            "plastic": 90,  # Plastic bin
-            "glass": 135,   # Glass bin
-            "trash": 180    # Trash bin
+            "paper": 45,     # Paper bin (was 0°)
+            "metal": 67,     # Metal bin (was 45°)
+            "plastic": 90,   # Plastic bin (center)
+            "glass": 112,    # Glass bin (was 135°)
+            "trash": 135     # Trash bin (was 180°)
         }
         
         # Dual servo sequence description

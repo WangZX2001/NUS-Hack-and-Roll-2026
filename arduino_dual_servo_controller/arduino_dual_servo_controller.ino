@@ -1,20 +1,20 @@
 /*
  * Arduino Dual Servo Controller for Garbage Classification System
- * Servo 1: Positioning arm (swings to correct bin)
+ * Servo 1: Positioning arm (swings to correct bin) - LIMITED RANGE 45° to 135°
  * Servo 2: Drop-down flap (opens to release rubbish) - FULL 180° MOTION
  * 
  * Hardware Setup:
- * - Servo 1 (positioning) connected to pin 11 (CHANGED from pin 9)
+ * - Servo 1 (positioning) connected to pin 11 - moves 45° to 135° (90° range)
  * - Servo 2 (drop flap) connected to pin 10 - moves 0° to 180° (full range)
  * - Power: 5V and GND for both servos
  * - Signals: Digital pins 11 and 10
  * 
  * Commands from Python:
- * P = Paper (0°)
- * M = Metal (45°)
+ * P = Paper (45°)
+ * M = Metal (67°)
  * L = Plastic (90°)
- * G = Glass (135°)
- * T = Trash (180°)
+ * G = Glass (112°)
+ * T = Trash (135°)
  * 
  * Flap Motion: Smooth sweep from 0° (closed) to 180° (fully open) and back
  */
@@ -25,12 +25,12 @@
 Servo positioningServo;  // Servo 1 - positions to correct bin
 Servo dropFlapServo;     // Servo 2 - opens flap to drop rubbish
 
-// Servo 1 positions for each material type
-const int PAPER_ANGLE = 0;     // Paper bin
-const int METAL_ANGLE = 45;    // Metal bin  
-const int PLASTIC_ANGLE = 90;  // Plastic bin
-const int GLASS_ANGLE = 135;   // Glass bin
-const int TRASH_ANGLE = 180;   // Trash bin
+// Servo 1 positions for each material type (45° to 135° range)
+const int PAPER_ANGLE = 45;     // Paper bin (was 0°)
+const int METAL_ANGLE = 67;     // Metal bin (was 45°)
+const int PLASTIC_ANGLE = 90;   // Plastic bin (center, unchanged)
+const int GLASS_ANGLE = 112;    // Glass bin (was 135°)
+const int TRASH_ANGLE = 135;    // Trash bin (was 180°)
 
 // Servo 2 positions for drop flap
 const int FLAP_CLOSED = 0;     // Flap closed (holding rubbish)
@@ -56,11 +56,11 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   
   // Initialize servo positions
-  Serial.println("Initializing servos...");
-  Serial.println("  Setting positioning servo to 0° (start position)");
-  positioningServo.write(0);    // Start at 0 degrees instead of center
-  Serial.println("  Setting flap servo to 0° (closed)");
-  dropFlapServo.write(FLAP_CLOSED);  // Flap closed
+  Serial.println(F("Init servos..."));
+  Serial.println(F("Positioning to 90° (center)"));
+  positioningServo.write(90);    // Start at center (90°)
+  Serial.println(F("Flap to 0° (closed)"));
+  dropFlapServo.write(FLAP_CLOSED);
   delay(1000);
   
   // Quick LED blink to indicate ready
@@ -243,16 +243,16 @@ void testPositioningServo() {
   
   Serial.println(F("Unstick: rapid moves"));
   for (int i = 0; i < 5; i++) {
-    positioningServo.write(0);
+    positioningServo.write(45);   // Changed from 0
     delay(200);
-    positioningServo.write(180);
+    positioningServo.write(135);  // Changed from 180
     delay(200);
   }
   
-  Serial.println(F("Test positions"));
+  Serial.println(F("Test positions (45° to 135°)"));
   delay(1000);
   
-  int pos[] = {0, 45, 90, 135, 180};
+  int pos[] = {45, 67, 90, 112, 135};  // Updated angles
   const char* labels[] = {"Paper", "Metal", "Plastic", "Glass", "Trash"};
   
   for (int i = 0; i < 5; i++) {
@@ -293,12 +293,12 @@ void detachReattachServo() {
   positioningServo.write(90);
   delay(1000);
   
-  Serial.println(F("Test 0°"));
-  positioningServo.write(0);
+  Serial.println(F("Test 45°"));  // Changed from 0°
+  positioningServo.write(45);
   delay(1500);
   
-  Serial.println(F("Test 180°"));
-  positioningServo.write(180);
+  Serial.println(F("Test 135°"));  // Changed from 180°
+  positioningServo.write(135);
   delay(1500);
   
   Serial.println(F("Back to 90°"));
