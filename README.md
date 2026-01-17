@@ -62,10 +62,9 @@ yolov8n.pt                                               # Detection model (auto
 ```
 Hacker-and-Roll-2026/
 │
-├── webapp_5class.py                    # Main web application
-├── quick_setup.py                     # One-command setup script
-├── arduino_servo_controller.ino       # Arduino servo control code
-├── ARDUINO_SETUP.md                   # Arduino setup guide
+├── webapp_5class.py                    # Main web application with dual servo control
+├── arduino_dual_servo_controller.ino  # Arduino dual servo code (positioning + drop flap)
+├── DUAL_SERVO_SETUP.md                # Complete setup guide for dual servo system
 ├── create_5_class_dataset.py           # Dataset creation tool
 ├── test_5class_model.py               # Model testing utility
 ├── requirements.txt                    # Python dependencies

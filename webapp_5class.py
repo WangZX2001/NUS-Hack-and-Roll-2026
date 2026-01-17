@@ -106,12 +106,12 @@ class GarbageClassifier5Class:
         return ports
     
     def connect_arduino(self, port=None):
-        """Connect to Arduino via serial."""
+        """Connect to Arduino via serial with improved error handling."""
         try:
             # Close existing connection
             if self.arduino and self.arduino.is_open:
                 self.arduino.close()
-                time.sleep(1)  # Give port time to close
+                time.sleep(2)  # Give more time for port to close
             
             if port is None:
                 # Auto-detect Arduino port
@@ -123,21 +123,22 @@ class GarbageClassifier5Class:
             
             print(f"🔌 Attempting to connect to Arduino on {port}...")
             
-            # Try to connect with multiple attempts
-            for attempt in range(3):
+            # Try to connect with multiple attempts and longer timeouts
+            for attempt in range(5):  # Increased attempts
                 try:
-                    self.arduino = serial.Serial(port, 9600, timeout=3)
+                    print(f"   Attempt {attempt + 1}/5...")
+                    self.arduino = serial.Serial(port, 9600, timeout=5)  # Longer timeout
                     break
                 except serial.SerialException as e:
-                    if attempt < 2:
-                        print(f"   Attempt {attempt + 1} failed, retrying...")
-                        time.sleep(2)
+                    if attempt < 4:
+                        print(f"   Attempt {attempt + 1} failed: {e}")
+                        time.sleep(3)  # Longer wait between attempts
                     else:
                         raise e
             
-            # Wait for Arduino to initialize
+            # Wait longer for Arduino to initialize
             print("   Waiting for Arduino to initialize...")
-            time.sleep(3)  # Increased wait time
+            time.sleep(4)  # Increased wait time
             
             # Test connection
             if self.arduino.is_open:
@@ -149,15 +150,18 @@ class GarbageClassifier5Class:
                 try:
                     # Clear input buffer
                     self.arduino.reset_input_buffer()
+                    time.sleep(0.5)
                     
                     # Send a test command to verify communication
-                    print("   Testing communication...")
-                    self.arduino.write(b'P')  # Test with Paper command
-                    time.sleep(1)
+                    print("   Testing communication with 'R' (reset) command...")
+                    self.arduino.write(b'R')  # Reset command
+                    self.arduino.flush()
+                    time.sleep(2)
                     
                     # Read any responses
                     responses = []
-                    while self.arduino.in_waiting > 0:
+                    timeout = time.time() + 3
+                    while time.time() < timeout and self.arduino.in_waiting > 0:
                         try:
                             message = self.arduino.readline().decode().strip()
                             if message:
@@ -165,6 +169,7 @@ class GarbageClassifier5Class:
                                 print(f"   Arduino: {message}")
                         except:
                             break
+                        time.sleep(0.1)
                     
                     if responses:
                         print("✅ Arduino communication test successful!")
@@ -184,9 +189,9 @@ class GarbageClassifier5Class:
             print(f"❌ Arduino connection error: {e}")
             if "Access is denied" in str(e) or "PermissionError" in str(e):
                 print("   💡 This usually means:")
-                print("   - Arduino IDE Serial Monitor is still open")
                 print("   - Another program is using the port")
-                print("   - Try closing Arduino IDE completely and wait 10 seconds")
+                print("   - Try restarting the web application")
+                print("   - Check if Arduino IDE is still running")
             self.arduino_connected = False
             return False
         except Exception as e:
@@ -520,15 +525,26 @@ def get_arduino_ports():
 
 @app.route('/api/arduino/connect', methods=['POST'])
 def connect_arduino():
-    """Connect to Arduino."""
+    """Connect to Arduino with improved error handling."""
     data = request.get_json()
     port = data.get('port', None)
+    
+    # Force close any existing connections first
+    if classifier.arduino and classifier.arduino.is_open:
+        try:
+            classifier.arduino.close()
+            time.sleep(2)
+        except:
+            pass
+    
+    classifier.arduino_connected = False
     
     success = classifier.connect_arduino(port)
     return jsonify({
         'success': success,
         'connected': classifier.arduino_connected,
-        'port': classifier.arduino_port
+        'port': classifier.arduino_port if success else None,
+        'message': 'Connected successfully' if success else 'Connection failed - check console for details'
     })
 
 @app.route('/api/arduino/disconnect', methods=['POST'])
