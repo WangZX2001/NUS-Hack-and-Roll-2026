@@ -1,6 +1,11 @@
 # 🗑️ AI Garbage Classification System
 
-https://github.com/user-attachments/assets/f80a1b7c-a1db-4532-9bcf-bbfd845e3514
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/f80a1b7c-a1db-4532-9bcf-bbfd845e3514"
+         width="600"
+         controls>
+  </video>
+</p>
 
 An AI-powered vision system that automatically classifies and sorts waste into **5 material types** using a camera and a trained deep learning model. The system runs through a web interface and **automatically connects to Arduino** for physical sorting hardware.
 
